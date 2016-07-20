@@ -1,7 +1,8 @@
 
 module RiemannHilbert
-    using Base, ApproxFun, SingularIntegralEquations
-    import SingularIntegralEquations:cauchyforward,cauchybackward
+using Base, ApproxFun, SingularIntegralEquations, DualNumbers
+    import SingularIntegralEquations: stieltjesforward, stieltjesbackward
+    import ApproxFun: mobius
 
 export cauchymatrix
 
@@ -13,40 +14,40 @@ immutable LogNumber
 end
 
 
-function fpcauchy(f::Fun,z::Dual)
+function fpstieltjes(f::Fun,z::Dual)
     x = mobius(domain(f),z)
-    if isinf(mobius(domain(f),Inf))
+    if !isinf(mobius(domain(f),Inf))
         error("Not implemented")
     end
     cfs = coefficients(f,Chebyshev)
     if realpart(x) ≈ 1
-        c = (log(dualpart(x))-log(2))/(2π*im) * sum(cfs)
+        c = -(log(dualpart(x))-log(2)) * sum(cfs)
         r = 0.0
         for k=2:2:length(cfs)-1
             r += 1/(k-1)
-            c += r*2/(π*im)*cfs[k+1]
+            c += -r*4*cfs[k+1]
         end
         r = 1.0
         for k=1:2:length(cfs)-1
             r += 1/(k-2)
-            c += (r+1/(2k))*2/(π*im)*cfs[k+1]
+            c += -(r+1/(2k))*4*cfs[k+1]
         end
         c
     elseif realpart(x) ≈ -1
-        v = (log(-dualpart(x))-log(2))/(2π*im)
+        v = -(log(-dualpart(x))-log(2))
         if !isempty(cfs)
             c = -v*cfs[1]
         end
         r = 0.0
         for k=2:2:length(cfs)-1
             r += 1/(k-1)
-            c += -r*2/(π*im)*cfs[k+1]
+            c += r*4*cfs[k+1]
             c += -v*cfs[k+1]
         end
         r = 1.0
         for k=1:2:length(cfs)-1
             r += 1/(k-2)
-            c += (r+1/(2k))*2/(π*im)*cfs[k+1]
+            c += -(r+1/(2k))*4*cfs[k+1]
             c += v*cfs[k+1]
         end
         c
@@ -55,22 +56,24 @@ function fpcauchy(f::Fun,z::Dual)
     end
 end
 
+fpcauchy(x...) = fpstieltjes(x...)/(-2π*im)
 
 
-function cauchymatrix(s::Bool,space,pts::Vector)
+
+function stieltjesmatrix(space,pts::Vector,s::Bool)
     n=length(pts)
     C=Array(Complex128,n,n)
     for k=1:n
-         C[k,:]=cauchyforward(s,space,n,pts[k])
+         C[k,:]=stieltjesforward(s,space,n,pts[k])
     end
     C
 end
 
-function cauchymatrix(space,pts::Vector)
+function stieltjesmatrix(space,pts::Vector)
     n=length(pts)
     C=zeros(Complex128,n,n)
     for k=1:n
-        cfs=cauchybackward(space,pts[k])
+        cfs=stieltjesbackward(space,pts[k])
         C[k,1:min(length(cfs),n)]=cfs
     end
 
@@ -78,7 +81,9 @@ function cauchymatrix(space,pts::Vector)
 end
 
 
-cauchymatrix(s::Bool,space,n::Integer)=cauchymatrix(s,space,points(space,n))
-cauchymatrix(space,space2,n::Integer)=cauchymatrix(s,space,points(space2,n))
+stieltjesmatrix(space,n::Integer,s::Bool)=stieltjesmatrix(space,points(space,n),s)
+stieltjesmatrix(space,space2,n::Integer)=stieltjesmatrix(space,points(space2,n))
+
+cauchymatrix(x...) = stieltjesmatrix(x...)/(-2π*im)
 
 end #module
