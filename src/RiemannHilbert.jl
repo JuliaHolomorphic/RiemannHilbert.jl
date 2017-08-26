@@ -1,17 +1,33 @@
-
 module RiemannHilbert
 using Base, ApproxFun, SingularIntegralEquations, DualNumbers
-    import SingularIntegralEquations: stieltjesforward, stieltjesbackward
-    import ApproxFun: mobius
+
+
+import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected
+import ApproxFun: mobius
+
+import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype, start, next, done,
+                >=, /, ^, \, ∪, transpose, size, to_indexes, reindex, tail, broadcast, broadcast!
+
+# we need to import all special functions to use Calculus.symbolic_derivatives_1arg
+# we can't do importall Base as we replace some Base definitions
+import Base: sinpi, cospi, airy, besselh, exp,
+                    asinh, acosh,atanh, erfcx, dawson, erf, erfi,
+                    sin, cos, sinh, cosh, airyai, airybi, airyaiprime, airybiprime,
+                    hankelh1, hankelh2, besselj, bessely, besseli, besselk,
+                    besselkx, hankelh1x, hankelh2x, exp2, exp10, log2, log10,
+                    tan, tanh, csc, asin, acsc, sec, acos, asec,
+                    cot, atan, acot, sinh, csch, asinh, acsch,
+                    sech, acosh, asech, tanh, coth, atanh, acoth,
+                    expm1, log1p, lfact, sinc, cosc, erfinv, erfcinv, beta, lbeta,
+                    eta, zeta, gamma,  lgamma, polygamma, invdigamma, digamma, trigamma,
+                    abs, sign, log, expm1, tan, abs2, sqrt, angle, max, min, cbrt, log,
+                    atan, acos, asin, erfc, inv
+
+import DualNumbers: Dual, value, epsilon, dual
 
 export cauchymatrix
 
-
-# represent a + b*log(ε)
-immutable LogNumber
-    constant::Complex128
-    log::Complex128
-end
+include("LogNumber.jl")
 
 
 function fpstieltjes(f::Fun,z::Dual)
