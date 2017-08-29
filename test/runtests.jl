@@ -1,71 +1,51 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, Base.Test
-    import RiemannHilbert: fpcauchy, RiemannDual, LogNumber
-    import SingularIntegralEquations: stieltjesmoment, undirected, Directed
+    import RiemannHilbert: RiemannDual, LogNumber, fpstietjesmatrix!
+    import SingularIntegralEquations: stieltjesmoment, undirected, Directed, ⁻
     import SingularIntegralEquations.HypergeometricFunctions: speciallog
-
-
-f=Fun(exp)
-ε=0.00000000001;
-@test cauchy(f,1.0+ε)-f(1.)/(2π*im)*log(ε) ≈ fpcauchy(f,dual(1.0,1.0)) atol=1E-6
-@test cauchy(f,1.0+(1.+1.0im)*ε)-f(1.)/(2π*im)*log(ε) ≈ fpcauchy(f,dual(1.0,(1.+1.0im))) atol=1E-6
-@test cauchy(f,-1.0-ε)+f(-1.)/(2π*im)*log(ε) ≈ fpcauchy(f,dual(-1.0,-1.0)) atol=1E-6
-@test cauchy(f,-1.0+(1.+1.0im)*ε)+f(-1.)/(2π*im)*log(ε) ≈ fpcauchy(f,dual(-1.0,(1.+1.0im))) atol=1E-6
-
-
-
-
-
-
-@which fpcauchy(f,dual(1.0,1.0))
-
-
 
 for h in (0.1,0.01), a in (2exp(0.1im),1.1)
     @test log(RiemannDual(0,a))(h) ≈ log(h*a)
+    @test log(RiemannDual(Inf,a))(h) ≈ log(a/h)
 end
-
 
 for h in (0.1,0.01), a in (2exp(0.1im),1.1)
     @test log1p(RiemannDual(-1,a))(h) ≈ log(h*a)
+    @test log1p(RiemannDual(Inf,a))(h) ≈ log(a/h)
 end
 
 
-z = RiemannDual(-1,-1)
-l = stieltjesjacobimoment(0,0,0,z)
 h = 0.0000001
-@test l(h) ≈ stieltjesjacobimoment(0,0,0,value(z)+epsilon(z)h) atol=1E-5
+for z in (RiemannDual(-1,-1), RiemannDual(1,1), RiemannDual(-1,2exp(0.1im)), RiemannDual(1,2exp(0.1im))),
+        k = 0:1
+    l = stieltjesjacobimoment(0,0,k,z)
+    @test l(h) ≈ stieltjesjacobimoment(0,0,k,value(z)+epsilon(z)h) atol=1E-5
+end
 
-l = stieltjesjacobimoment(0,0,1,z)
-@test l(h) ≈ stieltjesjacobimoment(0,0,1,value(z)+epsilon(z)h) atol=1E-5
-
-
-
-h = 0.00001
-@test l(h) ≈ stieltjesjacobimoment(0,0,0,value(z)+epsilon(z)h) atol=1E-5
-
-
-
+h=0.0001
 for z in (RiemannDual(1,3exp(0.2im)), RiemannDual(1,0.5exp(-1.3im)),
             RiemannDual(-1,3exp(0.2im)), RiemannDual(-1,0.5exp(-1.3im)),
             RiemannDual(-1,1), RiemannDual(1,-1))
-    @test atanh(z)(h) ≈  atanh(value(z)+epsilon(z)h) atol = 1E-5
+    @test atanh(z)(h) ≈  atanh(value(z)+epsilon(z)h) atol = 1E-4
 end
 
 z = RiemannDual(1,-0.25)
+h = 0.0000001
 @test speciallog(z)(h) ≈ speciallog(value(z)+epsilon(z)h) atol=1E-4
 
-
+h = 0.00001
 for z in (RiemannDual(-1,-1), RiemannDual(-1,exp(0.1im)), RiemannDual(-1,exp(-0.1im)))
     @test stieltjesjacobimoment(0.5,0,0,z)(h) ≈ stieltjesjacobimoment(0.5,0,0,value(z)+epsilon(z)h) atol=1E-4
 end
 
 
 
+
+
 f = Fun(exp,Legendre())
 
-
+h = 0.00001
 for z in  (RiemannDual(-1,-1), RiemannDual(-1,1+im), RiemannDual(-1,1-im))
-    @test cauchy(f, z)(h) ≈ cauchy(f, value(z) + epsilon(z)h) atol=1E-5
+    @test cauchy(f, z)(h) ≈ cauchy(f, value(z) + epsilon(z)h) atol=1E-4
 end
 
 
@@ -94,6 +74,36 @@ for k=0:1, s=(false,true)
 end
 
 
+@test RiemannHilbert.orientedfirst(Segment()) == RiemannDual(-1.0,1)
+@test RiemannHilbert.orientedlast(Segment()) == RiemannDual(1.0,-1)
+
+
+Γ = Segment()
+f = Fun(x->exp(-40(x-0.1)^2), Legendre())
+C = Array{Complex128}(ncoefficients(f), ncoefficients(f))
+d = Segment(im,2im)
+
+fpstietjesmatrix!(C, space(f), d)
+c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+@test c(1.5im) ≈ stieltjes(f,1.5im)
+
+d = Segment(-1,-1+im)
+fpstietjesmatrix!(C, space(f), d)
+@test norm(C) ≤ 100
+c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+@test c(-1+0.5im) ≈ stieltjes(f,-1+0.5im)
+
+d = Segment(1,1+im)
+fpstietjesmatrix!(C, space(f), d)
+@test norm(C) ≤ 100
+c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+@test c(1+0.5im) ≈ stieltjes(f,1+0.5im)
+
+d = Segment()
+fpstietjesmatrix!(C, space(f), d)
+@test norm(C) ≤ 100
+c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+@test c(0.5) ≈ stieltjes(f,0.5*⁻)
 
 
 @time g = Fun(f, Chebyshev())
@@ -113,45 +123,6 @@ sp = Legendre(component(Γ, 1))
 d = component(Γ, 2)
 
 
-orientedfirst(d::Segment) = RiemannDual(first(d), angle(d))
-orientedlast(d::Segment) = RiemannDual(last(d), -angle(d))
-
-
-
-function fpstietjesmatrix!(C, sp, d)
-    m, n = size(C)
-    pts = points(d, m; kind=2)
-    if d == domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, Directed{false}(orientedlast(d)), finitepart)
-        for k=2:m-1
-            stieltjesmoment!(view(C,k,:), sp, Directed{false}(pts[k]))
-        end
-        stieltjesmoment!(view(C,m,:), sp, Directed{false}(orientedfirst(d)), finitepart)
-    elseif first(d) ∈ domain(sp) && last(d) ∈ domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, orientedlast(d), finitepart)
-        for k=2:m-1
-            stieltjesmoment!(view(C,k,:), sp, pts[k])
-        end
-        stieltjesmoment!(view(C,m,:), sp, orientedfirst(d), finitepart)
-    elseif first(d) ∈ domain(sp)
-        for k=1:m-1
-            stieltjesmoment!(view(C,k,:), sp, pts[k])
-        end
-        stieltjesmoment!(view(C,m,:), sp, orientedfirst(d), finitepart)
-    elseif last(d) ∈ domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, orientedlast(d), finitepart)
-        for k=2:m
-            stieltjesmoment!(view(C,k,:), sp, pts[k])
-        end
-    else
-        for k=1:m
-            stieltjesmoment!(view(C,k,:), sp, pts[k])
-        end
-    end
-    C
-end
-
-
 
 n=200
     C = Array{Complex128}(n*ncomponents(Γ),n*ncomponents(Γ))
@@ -162,8 +133,9 @@ n=200
 
 
 
-C = Array{Complex128}(10, 10)
-    fpstietjesmatrix!(C, Legendre(), Segment())
+n = 1000
+    C = Array{Complex128}(n, n)
+    @time fpstietjesmatrix!(C, Legendre(component(Γ,1)), component(Γ,2))
 Profile.print()
 
 C

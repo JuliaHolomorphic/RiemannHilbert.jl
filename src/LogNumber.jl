@@ -82,7 +82,7 @@ for f in (:+, :-, :*)
 end
 
 function inv(z::RiemannDual)
-    value(z) == 0 && return RiemannDual(inv(value(z)),inv(epsilon(z)))
+    value(z) == 0 && return RiemannDual(Inf, inv(epsilon(z)))
     RiemannDual(inv(dual(z)))
 end
 
@@ -98,7 +98,7 @@ end
 
 function log(z::RiemannDual)
     @assert value(z) == 0 || isinf(value(z))
-    LogNumber(1,log(abs(epsilon(z))) + im*angle(epsilon(z)))
+    LogNumber(value(z) == 0 ? 1 : -1, log(abs(epsilon(z))) + im*angle(epsilon(z)))
 end
 
 function atanh(z::RiemannDual)
