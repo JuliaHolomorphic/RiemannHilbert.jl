@@ -21,7 +21,7 @@ import Base: sinpi, cospi, airy, besselh, exp,
                     expm1, log1p, lfact, sinc, cosc, erfinv, erfcinv, beta, lbeta,
                     eta, zeta, gamma,  lgamma, polygamma, invdigamma, digamma, trigamma,
                     abs, sign, log, expm1, tan, abs2, sqrt, angle, max, min, cbrt, log,
-                    atan, acos, asin, erfc, inv
+                    atan, acos, asin, erfc, inv, real, imag, abs, conj
 
 import DualNumbers: Dual, value, epsilon, dual
 
@@ -80,7 +80,7 @@ function stieltjesmatrix(space,pts::Vector,s::Bool)
     n=length(pts)
     C=Array(Complex128,n,n)
     for k=1:n
-         C[k,:]=stieltjesforward(s,space,n,pts[k])
+         C[k,:] = stieltjesforward(s,space,n,pts[k])
     end
     C
 end
@@ -89,8 +89,8 @@ function stieltjesmatrix(space,pts::Vector)
     n=length(pts)
     C=zeros(Complex128,n,n)
     for k=1:n
-        cfs=stieltjesbackward(space,pts[k])
-        C[k,1:min(length(cfs),n)]=cfs
+        cfs = stieltjesbackward(space,pts[k])
+        C[k,1:min(length(cfs),n)] = cfs
     end
 
     C
