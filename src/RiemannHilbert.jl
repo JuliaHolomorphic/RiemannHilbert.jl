@@ -142,6 +142,28 @@ end
 
 
 
+function fpstietjesmatrix(sp::Space, ns::AbstractVector{Int}, ms::AbstractVector{Int})
+    N, M = length(ns), length(ms)
+    @assert N == M == ncomponents(sp)
+    n, m = sum(ns), sum(ms)
+    C = Array{Complex128}(n, m)
+
+    k_start = j_start = 1
+    for k = 1:N
+        k_end = k_start + ns[k] - 1
+        for j=1:N
+            j_end = j_start + ms[j] - 1
+            fpstietjesmatrix!(view(C, k_start:k_end, j_start:j_end), component(sp, j), domain(component(sp, k)))
+            j_start = j_end+1
+        end
+        k_start = k_end+1
+        j_start = 1
+    end
+    C
+end
+
+
+
 
 cauchymatrix(x...) = stieltjesmatrix(x...)/(-2π*im)
 

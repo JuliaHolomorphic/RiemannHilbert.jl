@@ -106,8 +106,50 @@ c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
 @test c(0.5) ≈ stieltjes(f,0.5*⁻)
 
 
-@time g = Fun(f, Chebyshev())
-@time cauchy(f, z)
+d = Segment(0,1)
+f = Fun(x->exp(-40(x-0.1)^2), Legendre(d))
+C = Array{Complex128}(ncoefficients(f), ncoefficients(f))
+fpstietjesmatrix!(C, space(f), d)
+@test norm(C) ≤ 100
+c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+@test c(0.5) ≈ stieltjes(f,0.5*⁻)
+
+
+
+fpstietjesmatrix!(C, space(f), d)
+
+
+
+
+sp = Legendre(0..1) ⊕ Legendre(0 .. -1)
+f = Fun(x->exp(-40(x-0.1)^2), sp)
+
+
+
+ns = ncoefficients.(components(f))
+C = fpstietjesmatrix(space(f), ns, ns)
+@test norm(C) ≤ 100
+
+cfs = vcat(coefficients.(components(f))...)
+c_cfs = C*cfs
+c1 = Fun(component(sp,1),c_cfs[1:ns[1]])
+c2 = Fun(component(sp,2),c_cfs[ns[1]+1:end])
+
+
+@test RiemannHilbert.fpstietjesmatrix(Legendre(0..1), [44], [44]) == C[1:44,1:44]
+
+
+ns[1]
+
+stieltjes(f, 0.5*⁻)
+
+c1(0.5)
+
+stieltjes(f, -0.5*⁻)
+
+
+c2(-0.5)
+
 
 @time fpcauchy(f, dual(z))
 
