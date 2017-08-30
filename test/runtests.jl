@@ -1,6 +1,6 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, Base.Test
-    import RiemannHilbert: RiemannDual, LogNumber, fpstietjesmatrix!
-    import SingularIntegralEquations: stieltjesmoment, undirected, Directed, ⁻
+    import RiemannHilbert: RiemannDual, LogNumber, fpstietjesmatrix!, fpstietjesmatrix, orientedlast, finitepart
+    import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁻
     import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
 for h in (0.1,0.01), a in (2exp(0.1im),1.1)
@@ -107,45 +107,47 @@ c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
 
 
 d = Segment(0,1)
-f = Fun(x->exp(-40(x-0.1)^2), Legendre(d))
-C = Array{Complex128}(ncoefficients(f), ncoefficients(f))
-fpstietjesmatrix!(C, space(f), d)
+f = Fun(x->exp(-200(x-0.6)^2), Legendre(d))
+C = fpstietjesmatrix(space(f), ncoefficients(f), ncoefficients(f))
 @test norm(C) ≤ 100
-c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
 @test c(0.5) ≈ stieltjes(f,0.5*⁻)
 
 
 
-fpstietjesmatrix!(C, space(f), d)
 
-
-
-
-sp = Legendre(0..1) ⊕ Legendre(0 .. -1)
+sp = Legendre(0 .. -1) ⊕ Legendre(0..1)
 f = Fun(x->exp(-40(x-0.1)^2), sp)
-
-
-
 ns = ncoefficients.(components(f))
 C = fpstietjesmatrix(space(f), ns, ns)
 @test norm(C) ≤ 100
 
 cfs = vcat(coefficients.(components(f))...)
-c_cfs = C*cfs
-c1 = Fun(component(sp,1),c_cfs[1:ns[1]])
-c2 = Fun(component(sp,2),c_cfs[ns[1]+1:end])
+c_vals = C*cfs
+
+@test c_vals[1] ≈ stieltjes(f, -1.0000000001)
+
+@test c_vals[43] ≈ stieltjes(f, points(Domain(0.. -1), ns[1]; kind=2)[43]*⁻)
+
+c_vals[43]
+c_vals[44]
+c_vals[end]
+
+c1 = Fun(Chebyshev(domain(component(sp,1))),chebyshevtransform(c_vals[1:ns[1]]; kind=2))
+c2 = Fun(Chebyshev(domain(component(sp,2))),c_cfs[ns[1]+1:end])
+
+
 
 
 @test RiemannHilbert.fpstietjesmatrix(Legendre(0..1), [44], [44]) == C[1:44,1:44]
 
 
-ns[1]
 
-stieltjes(f, 0.5*⁻)
 
-c1(0.5)
 
 stieltjes(f, -0.5*⁻)
+
+stieltjes(component(f, -0.5*⁻)
 
 
 c2(-0.5)

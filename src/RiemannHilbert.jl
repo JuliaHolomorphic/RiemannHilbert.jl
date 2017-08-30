@@ -162,6 +162,22 @@ function fpstietjesmatrix(sp::Space, ns::AbstractVector{Int}, ms::AbstractVector
     C
 end
 
+function fpstietjesmatrix(sp::Space, n::Int, m::Int)
+    N = ncomponents(sp)
+    nn = n ÷ N
+    ns = Array{Int}(N)
+    ns[1] = nn + rem(n,N)
+    ns[2:end] = nn
+
+    mm = n ÷ N
+    ms = Array{Int}(N)
+    ms[1] = mm + rem(m,N)
+    ms[2:end] = mm
+
+    fpstietjesmatrix(sp, ns, ms)
+end
+
+
 
 
 
