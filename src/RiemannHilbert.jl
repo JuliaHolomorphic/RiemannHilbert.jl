@@ -116,7 +116,7 @@ function fpstietjesmatrix!(C, sp, d)
             stieltjesmoment!(view(C,k,:), sp, Directed{false}(pts[k]))
         end
         stieltjesmoment!(view(C,m,:), sp, Directed{false}(orientedfirst(d)), finitepart)
-    elseif first(d) ∈ domain(sp) && last(d) ∈ domain(sp)
+    elseif first(d) == domain(sp) && last(d) ∈ domain(sp)
         stieltjesmoment!(view(C,1,:), sp, orientedlast(d), finitepart)
         for k=2:m-1
             stieltjesmoment!(view(C,k,:), sp, pts[k])
@@ -140,6 +140,7 @@ function fpstietjesmatrix!(C, sp, d)
     C
 end
 
+fpstietjesmatrix(sp::Space, d::Domain, n::Int, m::Int) = fpstietjesmatrix!(Array{Complex128}(n, m), sp, d)
 
 
 function fpstietjesmatrix(sp::Space, ns::AbstractVector{Int}, ms::AbstractVector{Int})
