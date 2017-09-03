@@ -107,7 +107,7 @@ orientedlast(d::Segment) = RiemannDual(last(d), -sign(d))
 
 
 
-function fpstietjesmatrix!(C, sp, d)
+function fpstieltjesmatrix!(C, sp, d)
     m, n = size(C)
     pts = points(d, m; kind=2)
     if d == domain(sp)
@@ -140,10 +140,10 @@ function fpstietjesmatrix!(C, sp, d)
     C
 end
 
-fpstietjesmatrix(sp::Space, d::Domain, n::Int, m::Int) = fpstietjesmatrix!(Array{Complex128}(n, m), sp, d)
+fpstieltjesmatrix(sp::Space, d::Domain, n::Int, m::Int) = fpstietjesmatrix!(Array{Complex128}(n, m), sp, d)
 
 
-function fpstietjesmatrix(sp::Space, ns::AbstractVector{Int}, ms::AbstractVector{Int})
+function fpstieltjesmatrix(sp::Space, ns::AbstractVector{Int}, ms::AbstractVector{Int})
     N, M = length(ns), length(ms)
     @assert N == M == ncomponents(sp)
     n, m = sum(ns), sum(ms)
@@ -163,7 +163,7 @@ function fpstietjesmatrix(sp::Space, ns::AbstractVector{Int}, ms::AbstractVector
     C
 end
 
-function fpstietjesmatrix(sp::Space, n::Int, m::Int)
+function fpstieltjesmatrix(sp::Space, n::Int, m::Int)
     N = ncomponents(sp)
     nn = n ÷ N
     ns = Array{Int}(N)
@@ -183,5 +183,6 @@ end
 
 
 cauchymatrix(x...) = stieltjesmatrix(x...)/(-2π*im)
+fpcauchymatrix(x...) = fpstieltjesmatrix(x...)/(-2π*im)
 
 end #module

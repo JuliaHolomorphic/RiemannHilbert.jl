@@ -1,5 +1,6 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, Base.Test
-    import RiemannHilbert: RiemannDual, LogNumber, fpstietjesmatrix!, fpstietjesmatrix, orientedlast, finitepart
+    import ApproxFun: ArraySpace
+    import RiemannHilbert: RiemannDual, LogNumber, fpstietjesmatrix!, fpstietjesmatrix, orientedlast, finitepart, fpcauchymatrix
     import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁻
     import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
@@ -193,3 +194,49 @@ h =0.00001
 
 @test c_vals[ns[1]] ≈ stieltjes(f, +0.0000000001im)
 @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
+
+
+
+s₁ = im
+s₃ = -im
+
+G1 = Fun( z -> [1 0; s₁*exp(8im/3*z^3) 1], ArraySpace(Legendre(Segment(0, 3exp(im*π/6))),2,2))
+ncoefficients(G1)
+
+
+Γ = Segment(0, 3exp(im*π/6)) ∪ Segment(0, 3exp(5im*π/6)) ∪ Segment(0, 3exp(-5im*π/6)) ∪ Segment(0, 3exp(-im*π/6))
+sp = PiecewiseSpace(Legendre.(components(Γ)))
+@profile C = fpcauchymatrix(sp,1000,1000)
+
+G = Fun( z -> if angle(z) ≈ π/6
+                    [1 0; s₁*exp(8im/3*z^3) 1]
+                elseif angle(z) ≈ 5π/6
+                    [1 0; s₃*exp(8im/3*z^3) 1]
+                elseif angle(z) ≈ -π/6
+                    [1 -s₃*exp(-8im/3*z^3); 0 1]
+                elseif angle(z) ≈ -5π/6
+                    [1 -s₁*exp(-8im/3*z^3); 0 1]
+                end
+                    , sp)
+
+
+
+
+
+M = (p->last.(p)).(components.(Array(G)))
+V = Array{Matrix{Complex128}}(4)
+for k=1:4
+    V[k] = (z->z[k]).(M)
+end
+
+V
+
+
+G(exp(-im*π/6)*0.00001)*G(exp(-5im*π/6)*0.00001)*G(exp(5im*π/6)*0.00001)*G(exp(im*π/6)*0.00001)
+
+
+[1 0; s₃ 1]*[1 0; s₁ 1]
+
+
+
+[0 1; -s₃ 1]*[0 1; -s₁ 1]
