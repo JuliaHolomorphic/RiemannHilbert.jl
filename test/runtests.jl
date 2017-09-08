@@ -1,6 +1,6 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, Base.Test
     import ApproxFun: ArraySpace
-    import RiemannHilbert: RiemannDual, LogNumber, fpstietjesmatrix!, fpstietjesmatrix, orientedlast, finitepart, fpcauchymatrix
+    import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedlast, finitepart, fpcauchymatrix
     import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁻
     import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
@@ -240,3 +240,34 @@ G(exp(-im*π/6)*0.00001)*G(exp(-5im*π/6)*0.00001)*G(exp(5im*π/6)*0.00001)*G(ex
 
 
 [0 1; -s₃ 1]*[0 1; -s₁ 1]
+
+
+
+
+sp = Legendre(-1 .. 0) ⊕ Legendre(0 .. 1)
+
+import ApproxFun: BlockInterlacer, Repeated, interlacer, ∞, UnitCount
+
+function component_indices(it::BlockInterlacer{NTuple{N,Repeated{Bool}}}, k::Int, kr::UnitRange) where N
+    b = length(it.blocks)
+    k + (first(kr)-1)*b:b:k + (last(kr)-1)*b
+end
+
+
+
+function component_indices(it::BlockInterlacer{NTuple{N,Repeated{Bool}}}, k::Int, kr::UnitCount) where N
+    b = length(it.blocks)
+    k + (first(kr)-1)*b:b:∞
+end
+
+
+
+@which (1:10000) ∩ (1:10)
+
+@time component_indices(interlacer(sp), 2, 2:∞) ∩ (1:10)
+
+1:∞|>typeof
+
+
+
+ApproxFun.interlacer(sp)
