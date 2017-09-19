@@ -406,10 +406,81 @@ u = Fun(sp, rhmatrix(g,n) \ g_v)
 sp = Legendre(0 .. -1) ∪ Legendre(0 .. 1)
 g = Fun(x->x ≥ 0 ? 1-0.3exp(-40x^2) : inv(1-0.3exp(-40x^2)), sp)
 
+u_ex = Fun(x->sign(x)u_1(x), sp)
+
+
+n = 2ncoefficients(g)
+g = pad(g,n)
+u_ex = pad(u_ex,n)
+@test (1+cauchy(u_ex,0.1⁺)) ≈ g(0.1)*(1+cauchy(u_ex,0.1⁻))
+
+C₋ = fpcauchymatrix(sp, n, n)
+pts = RiemannHilbert.collocationpoints(sp, n)
+
+@test C₋[1,:].'*coefficients(u_ex) ≈ cauchy(u_ex,pts[1]+eps()im)
+@test C₋[5,:].'*coefficients(u_ex) ≈ cauchy(u_ex,pts[5]+eps()im)
+@test C₋[n÷2,:].'*coefficients(u_ex) ≈ cauchy(u_ex,0.0+eps()im)
+@test C₋[(n÷2)+1,:].'*coefficients(u_ex) ≈ cauchy(u_ex,1.0+eps())
+@test C₋[end,:].'*coefficients(u_ex) ≈ cauchy(u_ex, pts[end]-eps()im)
+@test C₋[end,:].'*coefficients(u_ex) ≈ cauchy(u_ex, 0.0-eps()im)
+@test C₋[end-1,:].'*coefficients(u_ex) ≈ cauchy(u_ex,pts[end-1]-eps()im)
+
+
+
+@test C₋*coefficients(u_ex) ≈ [cauchy.(u_ex, pts[1:n÷2]+eps()im); cauchy.(u_ex, pts[(n÷2)+1:end]-eps()im)]
+g_v = RiemannHilbert.collocationvalues(g-1, n)
+
+@test g_v ≈ [g1.(pts1)-1; g2.(pts2)-1]
+G = diagm(g_v)
+
+@test G*g_v ≈ (g.(pts) .- 1).^2
+
+
+g1 = component(g,1)
+pts1 = RiemannHilbert.collocationpoints(component(sp,1), n÷2)
+E1=RiemannHilbert.evaluationmatrix(component(sp,1), length(pts1))
+
+@test E1*g1.coefficients ≈ g1.(pts1)
+
+g2 = component(g,2)
+pts2 = RiemannHilbert.collocationpoints(component(sp,2), n÷2)
+
+
+E = RiemannHilbert.evaluationmatrix(sp, n)
+@test E[1:end-1,:]*coefficients(g) ≈ g.(pts[1:end-1])
+@test E[end,:].'*coefficients(g) ≈ component(g,2)(0.0)
+
+@test (g2.(pts2)-1).*(C₋[(n÷2)+1:end,:]*coefficients(u_ex)) ≈ (g2.(pts2)-1).*cauchy.(u_ex, pts2-eps()im)
+@test (g.(pts1)-1).*(C₋[1:n÷2,:]*coefficients(u_ex)) ≈ (g.(pts1)-1).*cauchy.(u_ex, pts1+0.000000001im)
+@test (g.(pts2)-1).*(C₋[(n÷2)+1:end,:]*coefficients(u_ex)) ≈ (g.(pts2)-1).*cauchy.(u_ex, pts2-0.000000001im)
+@test G*C₋*coefficients(u_ex) ≈ [u_ex1.(pts1) - (g1.(pts1)-1).*cauchy.(u_ex, pts1+eps()im);
+                                u_ex2.(pts2) - (g2.(pts2)-1).*cauchy.(u_ex, pts2-eps()im)]
+
+u_ex1,u_ex2 = components(u_ex)
+L = E - G*C₋
+@test L*coefficients(u_ex) ≈ [u_ex1.(pts1) - (g1.(pts1)-1).*cauchy.(u_ex, pts1+eps()im);
+                                u_ex2.(pts2) - (g2.(pts2)-1).*cauchy.(u_ex, pts2-eps()im)]
+
+@test L == rhmatrix(g,n)
+
+u = Fun(sp, rhmatrix(g,n) \ g_v)
+φ1 = z -> 1 + cauchy(u,z)
+@test φ1(0.1⁺)  ≈ g(0.1)φ1(0.1⁻)
+@test φ1(-0.1⁺)  ≈ g(-0.1)φ1(-0.1⁻)
+
+
+@test 1+cauchy(u)(0.1+0.2im) ≈ φ1(0.1+0.2im)
+@test (1+cauchy(u) )(0.1+0.2im) ≈ φ1(0.1+0.2im)
+@test (1+cauchy(u) )(0.1⁻) ≈ φ1(0.1⁻)
+@test (1+cauchy(u) )(0.1⁺) ≈ φ1(0.1⁺)
+@test (1+cauchy(u) )(-0.1⁻) ≈ φ1(-0.1⁻)
+@test (1+cauchy(u) )(-0.1⁺) ≈ φ1(-0.1⁺)
 
 
 @time φ = rhsolve(g, 2ncoefficients(g))
 @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+
+
 
 
 s₁ = im

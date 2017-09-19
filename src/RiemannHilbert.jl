@@ -145,6 +145,7 @@ collocationpoints(sp::Space, m) = collocationpoints(domain(sp), m)
 
 
 collocationvalues(f::Fun, n) = f.(collocationpoints(space(f), n))
+collocationvalues(f::Fun{<:PiecewiseSpace}, n) = vcat(collocationvalues.(components(f), pieces_npoints(domain(f),n))...)
 
 function evaluationmatrix!(E, sp::PolynomialSpace, x)
     x .= tocanonical.(sp, x)
@@ -307,6 +308,6 @@ function rhmatrix(g, n)
     E .- C₋
 end
 
-rhsolve(g, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (g.(collocationpoints(space(g), n)) .- 1)))
+rhsolve(g, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
 
 end #module
