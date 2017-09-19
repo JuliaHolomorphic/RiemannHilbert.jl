@@ -186,7 +186,7 @@ C12 = fpstieltjesmatrix(space(v[2]), domain(v[1]), ncoefficients(v[1]), ncoeffic
 @test C[1,:] ≈ ApproxFun.interlace(C11[1,:], C12[1,:])
 
 
-
+## Piecewise
 
 sp = Legendre(0 .. -1) ⊕ Legendre(0 .. 1)
 f = Fun(x->sign(x)*exp(-40(x-0.1)^2), sp)
@@ -195,18 +195,12 @@ ns = ncoefficients.(v)
 C = fpstieltjesmatrix(space(f), ns, ns)
 @test norm(C) ≤ 100
 
-c_vals = C*coefficients(f)
-pts = RiemannHilbert.collocationpoints(space(f), ns)
-
 @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
 @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
 @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(0.0,+im)))
 @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
 @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
 @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
-
-
-
 
 
 h =0.00001
@@ -228,6 +222,29 @@ h =0.00001
 @test c_vals[ns[1]] ≈ stieltjes(f, +0.0000000001im)
 @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
 
+
+sp = Legendre(-1 .. 0) ⊕ Legendre(0 .. 1)
+f = Fun(x->exp(-40(x-0.1)^2), sp)
+v = components(f)
+ns = ncoefficients.(v)
+C = fpstieltjesmatrix(space(f), ns, ns)
+@test norm(C) ≤ 100
+
+c_vals = C*coefficients(f)
+pts = RiemannHilbert.collocationpoints(space(f), ns)
+
+@test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+@test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
+@test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
+@test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
+@test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
+@test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+
+
+
+
+
+## ArraySpace
 
 sp = ArraySpace(Legendre() ,2)
 f = Fun(x->[exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2)], sp)
@@ -280,6 +297,7 @@ C22 = fpstieltjesmatrix(sp[2,2], ns[2,2], ns[2,2])
 
 @test C*coefficients(f) ≈ [C11*coefficients(f[1,1]) ; C21*coefficients(f[2,1]) ; C12*coefficients(f[1,2]) ; C22*coefficients(f[2,2])]
 
+
 ## rhsolve
 
 sp = Legendre()
@@ -319,24 +337,79 @@ u = Fun(sp, rhmatrix(g,n) \ g_v)
 @test (1+cauchy(u) )(0.1⁻) ≈ φ(0.1⁻)
 
 
+sp = Legendre(-1 .. 0) ∪ Legendre(0 .. 1)
+u_1 = u
+u_ex = Fun(x->u_1(x), sp)
+g_1 = 1-0.3Fun(x->exp(-40x^2), Legendre())
 
-g = 1-0.3Fun(x->exp(-40x^2), Legendre())
-φ = rhsolve(g, 2ncoefficients(g))
+g = 1-0.3Fun(x->exp(-40x^2), sp)
+
+n = 2ncoefficients(g)
+g = pad(g,n)
+u_ex = pad(u_ex,n)
+@test (1+cauchy(u_ex,0.1⁺)) ≈ g(0.1)*(1+cauchy(u_ex,0.1⁻))
+
+C₋ = fpcauchymatrix(sp, n, n)
+pts = RiemannHilbert.collocationpoints(sp, n)
+
+@test C₋[1,:].'*coefficients(u_ex) ≈ cauchy(u_ex,pts[1]-eps()im)
+@test C₋[5,:].'*coefficients(u_ex) ≈ cauchy(u_ex,pts[5]-eps()im)
+@test C₋[end,:].'*coefficients(u_ex) ≈ cauchy(u_ex, 0.0-eps()im)
+@test C₋[end-1,:].'*coefficients(u_ex) ≈ cauchy(u_ex,pts[end-1]-eps()im)
+@test C₋[n÷2,:].'*coefficients(u_ex) ≈ cauchy(u_ex,-1.0-eps())
+@test C₋[(n÷2)+1,:].'*coefficients(u_ex) ≈ cauchy(u_ex,1.0+eps())
+
+
+@test C₋*coefficients(u_ex) ≈ cauchy.(u_ex, pts-eps()im)
+g_v = RiemannHilbert.collocationvalues(g-1, n)
+@test g_v ≈ g.(pts)-1
+G = diagm(g_v)
+
+@test G*g_v ≈ (g.(pts) .- 1).^2
+
+
+g1 = component(g,2)
+pts1 = RiemannHilbert.collocationpoints(component(sp,2), n÷2)
+E1=RiemannHilbert.evaluationmatrix(component(sp,1), length(pts1))
+
+@test E1*g1.coefficients ≈ g1.(pts1)
+
+
+E = RiemannHilbert.evaluationmatrix(sp, n)
+@test E*coefficients(g) ≈ g.(pts)
+
+@test (g.(pts)-1).*(C₋*coefficients(g)) ≈ (g.(pts)-1).*cauchy.(g, pts-0.000000001im)
+@test G*(C₋*coefficients(g)) ≈ (g.(pts)-1).*cauchy.(g, pts-0.000000001im)
+
+
+
+L = E - G*C₋
+@test L*coefficients(g) ≈ g.(pts) - (g.(pts)-1).*cauchy.(g, pts-0.000000001im)
+
+@test L == rhmatrix(g,n)
+
+u = Fun(sp, rhmatrix(g,n) \ g_v)
+φ = z -> 1 + cauchy(u,z)
 @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
 
 
-L \ g_v
-
-norm(G)
-
-(g.(pts)-1).*cauchy.(g, pts.-0.000001im)
-
-L*coefficients(g) - (g.(pts) - (g.(pts)-1).*cauchy.(g, pts.-0.000001im))
-
-g
+@test 1+cauchy(u)(0.1+0.2im) ≈ φ(0.1+0.2im)
+@test (1+cauchy(u) )(0.1+0.2im) ≈ φ(0.1+0.2im)
+@test (1+cauchy(u) )(0.1⁻) ≈ φ(0.1⁻)
 
 
-u = L \ g_v
+
+@time φ = rhsolve(g, 2ncoefficients(g))
+@test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+
+
+sp = Legendre(0 .. -1) ∪ Legendre(0 .. 1)
+g = Fun(x->x ≥ 0 ? 1-0.3exp(-40x^2) : inv(1-0.3exp(-40x^2)), sp)
+
+
+
+@time φ = rhsolve(g, 2ncoefficients(g))
+@test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
 
 
 s₁ = im

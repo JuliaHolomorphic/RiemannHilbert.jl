@@ -4,7 +4,7 @@ using Base, ApproxFun, SingularIntegralEquations, DualNumbers
 
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!
 import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, Repeated, UnitCount, interlacer, IntervalDomain, pieces_npoints,
-                    ArraySpace
+                    ArraySpace, tocanonical
 import ApproxFun: PolynomialSpace, recA, recB, recC
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype, start, next, done,
@@ -146,15 +146,53 @@ collocationpoints(sp::Space, m) = collocationpoints(domain(sp), m)
 
 collocationvalues(f::Fun, n) = f.(collocationpoints(space(f), n))
 
-function evaluationmatrix(sp::PolynomialSpace, x, n)
-    E = Array{Float64}(length(x), n)
+function evaluationmatrix!(E, sp::PolynomialSpace, x)
+    x .= tocanonical.(sp, x)
+
     E[:,1] = 1
     E[:,2] .= (recA(Float64,sp,0) .* x .+ recB(Float64,sp,0)) .* view(E,:,1)
-    for k=3:n
-        E[:,k] .= (recA(Float64,sp,k-2) .* x .+ recB(Float64,sp,k-2)) .* view(E,:,k-1) .- recC(Float64,sp,k-2).*view(E,:,k-2)
+    for j = 3:size(E,2)
+        E[:,j] .= (recA(Float64,sp,j-2) .* x .+ recB(Float64,sp,j-2)) .* view(E,:,j-1) .- recC(Float64,sp,j-2).*view(E,:,j-2)
     end
     E
 end
+
+
+evaluationmatrix!(E, sp::PolynomialSpace) =
+    evaluationmatrix!(E, sp, collocationpoints(sp, size(E,1)))
+
+evaluationmatrix(sp::PolynomialSpace, x, n) =
+    evaluationmatrix!(Array{Float64}(length(x), n), sp,x)
+
+
+function evaluationmatrix!(C, sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})
+    N, M = length(ns), length(ms)
+    @assert N == M == npieces(sp)
+    n, m = sum(ns), sum(ms)
+    @assert size(C) == (n,m)
+
+    for J = 1:M
+        jr = component_indices(sp, J, 1:ms[J])
+        k_start = 1
+        for K = 1:N
+            k_end = k_start + ns[K] - 1
+            kr = k_start:k_end
+            if K == J
+                evaluationmatrix!(view(C, kr, jr), component(sp, J))
+            else
+                view(C, kr, jr) .= 0
+            end
+            k_start = k_end+1
+        end
+    end
+
+    C
+end
+
+evaluationmatrix!(C, sp::PiecewiseSpace) =
+    evaluationmatrix!(C, sp, pieces_npoints(sp, size(C,1)), pieces_npoints(sp, size(C,2)))
+
+evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(n,n), sp)
 
 
 function fpstieltjesmatrix!(C, sp, d)
@@ -263,13 +301,12 @@ end
 function rhmatrix(g, n)
     sp = space(g)
     C₋ = fpcauchymatrix(sp, n, n)
-    pts = collocationpoints(sp, n)
     g_v = collocationvalues(g-1, n)
-    E = evaluationmatrix(sp, pts, n)
+    E = evaluationmatrix(sp, n)
     C₋ .= g_v .* C₋
     E .- C₋
 end
 
-rhsolve(g, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (g.(collocationpoints(space(g), n)) .- I)))
+rhsolve(g, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (g.(collocationpoints(space(g), n)) .- 1)))
 
 end #module
