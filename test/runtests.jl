@@ -483,6 +483,13 @@ u = Fun(sp, rhmatrix(g,n) \ g_v)
 
 
 
+sp = ArraySpace(Legendre(), 2, 2)
+G = Fun(Fun(x->[1 exp(-40x^2); 0 1], Chebyshev()), sp)
+
+
+Φ = rhsolve(G, 2ncoefficients(G))
+
+
 s₁ = im
 s₃ = -im
 

@@ -284,6 +284,9 @@ end
 
 
 
+fpstieltjesmatrix(sp::ArraySpace, n::Int, m::Int) =
+    fpstieltjesmatrix(sp, reshape(pieces_npoints(sp, n), size(sp)), reshape(pieces_npoints(sp, m), size(sp)))
+
 
 
 
