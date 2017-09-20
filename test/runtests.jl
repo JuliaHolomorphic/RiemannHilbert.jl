@@ -483,9 +483,41 @@ u = Fun(sp, rhmatrix(g,n) \ g_v)
 
 
 
-sp = ArraySpace(Legendre(), 2, 2)
-G = Fun(Fun(x->[1 exp(-40x^2); 0 1], Chebyshev()), sp)
+sp = ArraySpace(Legendre(), 2)
+f = Fun(Fun(x->[cos(x);sin(x)], Chebyshev()), ArraySpace(Legendre(), 2))
+G = Fun(Fun(x->[1 exp(-40x^2); 0.1exp(-40x^2) 1], Chebyshev()), ArraySpace(Legendre(), 2, 2))
 
+n = 2ncoefficients(G)
+E = RiemannHilbert.evaluationmatrix(sp, n)
+pts = RiemannHilbert.collocationpoints(sp, n÷2)
+
+@test E*coefficients(pad(f,n)) ≈ [f[1].(pts); f[2].(pts)]
+
+
+function multiplicationmatrix(G, n)
+    N, M = size(G)
+    ret = spzeros(eltype(G), n, n)
+    m = length(pts)
+    for K=1:N,J=1:M
+        kr = (K-1)*m + (1:m)
+        jr = (J-1)*m + (1:m)
+        V = view(ret, kr, jr)
+        view(V, diagind(V)) .= G[K,J].(pts)
+    end
+    ret
+end
+
+M = multiplicationmatrix(G-I, n)
+@test M*E*coefficients(pad(f,n)) ≈ mapreduce(f -> f.(pts), vcat, (G-I)*f)
+
+
+L = E - M*fpcauchymatrix(sp, n,n)
+u1 = L \ mapreduce(f -> f.(pts), vcat, (G-I)[:,1])
+u2 = L \ mapreduce(f -> f.(pts), vcat, (G-I)[:,2])
+z=2+I
+    Φ = z -> I + [cauchy(Fun(sp, u1),z) cauchy(Fun(sp, u2),z)]
+
+@test Φ(0.1+eps()im) ≈ G(0.1)*Φ(0.1-eps()im)
 
 Φ = rhsolve(G, 2ncoefficients(G))
 

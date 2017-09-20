@@ -4,7 +4,7 @@ using Base, ApproxFun, SingularIntegralEquations, DualNumbers
 
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!
 import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, Repeated, UnitCount, interlacer, IntervalDomain, pieces_npoints,
-                    ArraySpace, tocanonical
+                    ArraySpace, tocanonical, components_npoints
 import ApproxFun: PolynomialSpace, recA, recB, recC
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype, start, next, done,
@@ -172,19 +172,30 @@ function evaluationmatrix!(C, sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::A
     n, m = sum(ns), sum(ms)
     @assert size(C) == (n,m)
 
+    C .= 0
+
     for J = 1:M
         jr = component_indices(sp, J, 1:ms[J])
-        k_start = 1
-        for K = 1:N
-            k_end = k_start + ns[K] - 1
-            kr = k_start:k_end
-            if K == J
-                evaluationmatrix!(view(C, kr, jr), component(sp, J))
-            else
-                view(C, kr, jr) .= 0
-            end
-            k_start = k_end+1
-        end
+        k_start = sum(view(ns,1:J-1))+1
+        kr = k_start:k_start+ns[J]-1
+        evaluationmatrix!(view(C, kr, jr), component(sp, J))
+    end
+
+    C
+end
+
+
+function evaluationmatrix!(C, sp::ArraySpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})
+    @assert size(ns) == size(ms) == size(sp)
+    N = length(ns)
+
+    n, m = sum(ns), sum(ms)
+
+    for J = 1:N
+        jr = component_indices(sp, J, 1:ms[J])
+        k_start = sum(view(ns,1:J-1))+1
+        kr = k_start:k_start+ns[J]-1
+        evaluationmatrix!(view(C, kr, jr), sp[J])
     end
 
     C
@@ -192,6 +203,10 @@ end
 
 evaluationmatrix!(C, sp::PiecewiseSpace) =
     evaluationmatrix!(C, sp, pieces_npoints(sp, size(C,1)), pieces_npoints(sp, size(C,2)))
+
+evaluationmatrix!(C, sp::ArraySpace) =
+    evaluationmatrix!(C, sp, components_npoints(sp, size(C,1)), components_npoints(sp, size(C,2)))
+
 
 evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(n,n), sp)
 
@@ -236,7 +251,7 @@ fpstieltjesmatrix(sp::Space, d::Domain, n::Int, m::Int) = fpstieltjesmatrix!(Arr
 fpstieltjesmatrix(sp::Space, n::Int, m::Int) = fpstieltjesmatrix!(Array{Complex128}(n, m), sp, domain(sp))
 
 
-
+# we group points together by piece
 function fpstieltjesmatrix!(C, sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})
     N, M = length(ns), length(ms)
     @assert N == M == npieces(sp)
@@ -265,6 +280,7 @@ fpstieltjesmatrix!(C, sp::PiecewiseSpace) = fpstieltjesmatrix!(C, sp, pieces_npo
 fpstieltjesmatrix(sp::PiecewiseSpace, n::Int, m::Int) = fpstieltjesmatrix(sp, pieces_npoints(sp, n), pieces_npoints(sp, m))
 
 
+# we group indices together by piece
 function fpstieltjesmatrix(sp::ArraySpace, ns::AbstractArray{Int}, ms::AbstractArray{Int})
     @assert size(ns) == size(ms) == size(sp)
     N = length(ns)
