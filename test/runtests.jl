@@ -494,20 +494,8 @@ pts = RiemannHilbert.collocationpoints(sp, n÷2)
 @test E*coefficients(pad(f,n)) ≈ [f[1].(pts); f[2].(pts)]
 
 
-function multiplicationmatrix(G, n)
-    N, M = size(G)
-    ret = spzeros(eltype(G), n, n)
-    m = length(pts)
-    for K=1:N,J=1:M
-        kr = (K-1)*m + (1:m)
-        jr = (J-1)*m + (1:m)
-        V = view(ret, kr, jr)
-        view(V, diagind(V)) .= G[K,J].(pts)
-    end
-    ret
-end
 
-M = multiplicationmatrix(G-I, n)
+M = RiemannHilbert.multiplicationmatrix(G-I, n)
 @test M*E*coefficients(pad(f,n)) ≈ mapreduce(f -> f.(pts), vcat, (G-I)*f)
 
 
@@ -518,6 +506,40 @@ z=2+I
     Φ = z -> I + [cauchy(Fun(sp, u1),z) cauchy(Fun(sp, u2),z)]
 
 @test Φ(0.1+eps()im) ≈ G(0.1)*Φ(0.1-eps()im)
+
+@test RiemannHilbert.rhmatrix(G, n) == L
+
+@test RiemannHilbert.collocationvalues(G-I, n) ≈
+    [RiemannHilbert.collocationvalues((G-I)[:,1], n) RiemannHilbert.collocationvalues((G-I)[:,2], n)]
+
+Φ = rhsolve(G,n)
+G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
+function Base.show(f::Fun, ::MIM
+
+
+v=tuple([Fun(space(G)[:,k], cfs[:,k]) for k=1:size(G,2)]...)
+hcat(v...)[2,1] -v[1][2] |>coefficients|>norm
+length(v)
+N = length(v[1])
+M = length(v)
+
+N = length(v[1])
+M = length(v)
+
+V = Array{Fun}(N,M)
+for J=1:M
+    @show J
+    V[:,J] = vec(v[J])
+end
+Fun(V)
+
+v = Array{Fun}(N,M)
+v[1]
+for J=1:M
+    @show J, vec(v[J])
+    v[:,J] = vec(v[J])
+end
+Fun(v)
 
 Φ = rhsolve(G, 2ncoefficients(G))
 

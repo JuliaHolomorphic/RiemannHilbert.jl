@@ -4,7 +4,7 @@ using Base, ApproxFun, SingularIntegralEquations, DualNumbers
 
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!
 import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, Repeated, UnitCount, interlacer, IntervalDomain, pieces_npoints,
-                    ArraySpace, tocanonical, components_npoints
+                    ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun
 import ApproxFun: PolynomialSpace, recA, recB, recC
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype, start, next, done,
@@ -144,7 +144,20 @@ collocationpoints(d::UnionDomain, m::Int) = collocationpoints(d, pieces_npoints(
 collocationpoints(sp::Space, m) = collocationpoints(domain(sp), m)
 
 
-collocationvalues(f::Fun, n) = f.(collocationpoints(space(f), n))
+collocationvalues(f::ScalarFun, n) = f.(collocationpoints(space(f), n))
+function collocationvalues(f::VectorFun, n)
+    pts = collocationpoints(space(f), n÷size(f,1))
+    mapreduce(f̃ -> f̃.(pts), vcat, f)
+end
+function collocationvalues(f::MatrixFun, n)
+    M = size(f,2)
+    ret = Array{eltype(f)}(n, M)
+    for J=1:M
+        ret[:,J] = collocationvalues(f[:,J], n)
+    end
+    ret
+end
+
 collocationvalues(f::Fun{<:PiecewiseSpace}, n) = vcat(collocationvalues.(components(f), pieces_npoints(domain(f),n))...)
 
 function evaluationmatrix!(E, sp::PolynomialSpace, x)
@@ -318,7 +331,23 @@ end
 ## riemannhilbert
 
 
-function rhmatrix(g, n)
+function multiplicationmatrix(G, n)
+    N, M = size(G)
+    @assert N == M
+    sp = space(G)
+    ret = spzeros(eltype(G), n, n)
+    m = n ÷ N
+    pts = collocationpoints(sp, m)
+    for K=1:N,J=1:M
+        kr = (K-1)*m + (1:m)
+        jr = (J-1)*m + (1:m)
+        V = view(ret, kr, jr)
+        view(V, diagind(V)) .= G[K,J].(pts)
+    end
+    ret
+end
+
+function rhmatrix(g::ScalarFun, n)
     sp = space(g)
     C₋ = fpcauchymatrix(sp, n, n)
     g_v = collocationvalues(g-1, n)
@@ -327,6 +356,20 @@ function rhmatrix(g, n)
     E .- C₋
 end
 
-rhsolve(g, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
+function rhmatrix(g::MatrixFun, n)
+    sp = space(g)[:,1]
+    C₋ = fpcauchymatrix(sp, n, n)
+    G = multiplicationmatrix(g-I, n)
+    E = evaluationmatrix(sp, n)
+    E .- G*C₋
+end
+
+
+rhsolve(g::ScalarFun, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
+function rhsolve(G::MatrixFun, n)
+    cfs = rhmatrix(G, n) \ (collocationvalues(G-I, n))
+    U = hcat([Fun(space(G)[:,J], cfs[:,J]) for J=1:size(G,2)]...)
+    I+cauchy(U)
+end
 
 end #module
