@@ -203,9 +203,10 @@ function evaluationmatrix!(C, sp::ArraySpace, ns::AbstractVector{Int}, ms::Abstr
     N = length(ns)
 
     n, m = sum(ns), sum(ms)
+    @assert size(C) == (n,m)
 
     for J = 1:N
-        jr = component_indices(sp, J, 1:ms[J])
+        jr = component_indices(sp, J, 1:ms[J]) ∩ (1:m)
         k_start = sum(view(ns,1:J-1))+1
         kr = k_start:k_start+ns[J]-1
         evaluationmatrix!(view(C, kr, jr), sp[J])
@@ -302,7 +303,7 @@ function fpstieltjesmatrix(sp::ArraySpace, ns::AbstractArray{Int}, ms::AbstractA
     C = zeros(Complex128, n, m)
 
     for J = 1:N
-        jr = component_indices(sp, J, 1:ms[J])
+        jr = component_indices(sp, J, 1:ms[J]) ∩ (1:m)
         k_start = sum(view(ns,1:J-1))+1
         kr = k_start:k_start+ns[J]-1
         fpstieltjesmatrix!(view(C, kr, jr), sp[J])

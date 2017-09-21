@@ -513,46 +513,23 @@ z=2+I
     [RiemannHilbert.collocationvalues((G-I)[:,1], n) RiemannHilbert.collocationvalues((G-I)[:,2], n)]
 
 Φ = rhsolve(G,n)
-G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
-function Base.show(f::Fun, ::MIM
+@test G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
 
+sp = ArraySpace(Legendre(-1 .. 0) ∪ Legendre(0 .. 1), 2)
+G = Fun(x->[1 exp(-40x^2); 0.1exp(-40x^2) 1], ArraySpace(sp[1], 2, 2))
 
-v=tuple([Fun(space(G)[:,k], cfs[:,k]) for k=1:size(G,2)]...)
-hcat(v...)[2,1] -v[1][2] |>coefficients|>norm
-length(v)
-N = length(v[1])
-M = length(v)
+n=2ncoefficients(G)
+Φ = rhsolve(G,n)
 
-N = length(v[1])
-M = length(v)
-
-V = Array{Fun}(N,M)
-for J=1:M
-    @show J
-    V[:,J] = vec(v[J])
-end
-Fun(V)
-
-v = Array{Fun}(N,M)
-v[1]
-for J=1:M
-    @show J, vec(v[J])
-    v[:,J] = vec(v[J])
-end
-Fun(v)
-
-Φ = rhsolve(G, 2ncoefficients(G))
-
+@test G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
 
 s₁ = im
 s₃ = -im
 
 
-Γ = Segment(0, 3exp(im*π/6)) ∪ Segment(0, 3exp(5im*π/6)) ∪ Segment(0, 3exp(-5im*π/6)) ∪ Segment(0, 3exp(-im*π/6))
+Γ = Segment(0, 2.3exp(im*π/6)) ∪ Segment(0, 2.3exp(5im*π/6)) ∪
+        Segment(0, 2.3exp(-5im*π/6)) ∪ Segment(0, 2.3exp(-im*π/6))
 sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
-
-
-
 
 
 G = Fun( z -> if angle(z) ≈ π/6
@@ -565,6 +542,27 @@ G = Fun( z -> if angle(z) ≈ π/6
                     [1 -s₁*exp(-8im/3*z^3); 0 1]
                 end
                     , sp)
+
+
+ncoefficients(G)
+Φ = rhsolve(G.', 1400).'
+
+coefficients(Φ)
+
+Φ(s*⁻)*G(s) - Φ(s*⁺)|>norm
+
+s=exp(im*π/6)
+    @test Φ(s*⁻)*G(s) ≈ Φ(s*⁺)
+
+G(s)[2,1] ≈ s₁*exp(8im/3*s^3)
+
+G(s)*Φ(s*⁻) - Φ(s*⁺)
+
+
+Φ(1.0+0.1im)
+Φ(s*⁺)
+
+
 
 G.'(exp(π/6*im))
 
