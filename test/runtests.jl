@@ -523,14 +523,14 @@ n=2ncoefficients(G)
 
 @test G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
 
-s₁ = im
-s₃ = -im
 
 
-Γ = Segment(0, 2.3exp(im*π/6)) ∪ Segment(0, 2.3exp(5im*π/6)) ∪
-        Segment(0, 2.3exp(-5im*π/6)) ∪ Segment(0, 2.3exp(-im*π/6))
+Γ = Segment(0, 2.5exp(im*π/6)) ∪ Segment(0, 2.5exp(5im*π/6)) ∪
+        Segment(0, 2.5exp(-5im*π/6)) ∪ Segment(0, 2.5exp(-im*π/6))
 sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
 
+s₁ = im
+s₃ = -im
 
 G = Fun( z -> if angle(z) ≈ π/6
                     [1 0; s₁*exp(8im/3*z^3) 1]
@@ -544,15 +544,67 @@ G = Fun( z -> if angle(z) ≈ π/6
                     , sp)
 
 
-ncoefficients(G)
-Φ = rhsolve(G.', 1400).'
+@test map(g->first(components(g)[1]), G)*map(g->first(components(g)[2]), G)*
+    map(g->first(components(g)[3]), G)*map(g->first(components(g)[4]), G) ≈ eye(2)
 
-coefficients(Φ)
+for _=1:5
+    @test RiemannHilbert.evaluationmatrix(sp[:,1], 32) ≈ RiemannHilbert.evaluationmatrix(sp[:,1], 32)
+    @test RiemannHilbert.rhmatrix(G, 32) ≈ RiemannHilbert.rhmatrix(G, 32)
+end
 
-Φ(s*⁻)*G(s) - Φ(s*⁺)|>norm
+
+RiemannHilbert.rhmatrix(G.', 900) ≈ RiemannHilbert.rhmatrix(G.', 900)
+
+U = pad((G-I)[:,1],900)
+
+L = RiemannHilbert.rhmatrix(G.', 900)
+@which RiemannHilbert.rhmatrix(G.', 900)
+
+g = G.'
+sp = space(g)[:,1]
+n=900
+C₋ = fpcauchymatrix(sp, n, n)
+G = RiemannHilbert.multiplicationmatrix(g-I, n)
+E = RiemannHilbert.evaluationmatrix(sp, n)
+E .- G*C₋
+pts = points(sp, (n÷2))
+
+scatter(real.(pts), imag.(pts))
+
+E*coefficients(U) - [U[1].(pts);U[2].(pts)]|>norm
+
+@which RiemannHilbert.evaluationmatrix(sp, n)
+
+L*coefficients(U)
+
+
+L = RiemannHilbert.rhmatrix(G.', 900)
+    cond(L)
+4*4*2
+n = 4*4*2
+Φ = rhsolve(G.', 2200).'
 
 s=exp(im*π/6)
-    @test Φ(s*⁻)*G(s) ≈ Φ(s*⁺)
+    Φ(s*⁻)*G(s) - Φ(s*⁺) |>norm
+
+
+@test Φ(s*⁻) ≈ Φ(s+eps())
+@test Φ(s*⁺) ≈ Φ(s-eps())
+
+Φ(2.499999exp(im*π/6)⁺)- Φ(2.499999exp(im*π/6)⁻)
+using Plots
+scatter(abs.(Φ.coefficients);yscale=:log10)
+
+*G(s) - Φ(s*⁺)
+
+coefficients(Φ)[4500:end]|>norm
+
+
+coefficients(G.')
+using SO, Plots
+plot(abs.(coefficients(Φ)))
+
+@test Φ(s*⁻)*G(s) ≈ Φ(s*⁺)
 
 G(s)[2,1] ≈ s₁*exp(8im/3*s^3)
 

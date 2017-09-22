@@ -205,6 +205,8 @@ function evaluationmatrix!(C, sp::ArraySpace, ns::AbstractVector{Int}, ms::Abstr
     n, m = sum(ns), sum(ms)
     @assert size(C) == (n,m)
 
+    C .= 0
+
     for J = 1:N
         jr = component_indices(sp, J, 1:ms[J]) ∩ (1:m)
         k_start = sum(view(ns,1:J-1))+1
