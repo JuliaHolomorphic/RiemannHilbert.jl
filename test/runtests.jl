@@ -555,16 +555,53 @@ end
 
 @test RiemannHilbert.rhmatrix(G.', 900) ≈ RiemannHilbert.rhmatrix(G.', 900)
 
-U = pad((G-I)[:,1],900)
+n = 2*4*20
+U = pad((G-I)[:,1],n)
+E = RiemannHilbert.evaluationmatrix(space(U), n)
 
-n = ncoefficients(U)
-E = RiemannHilbert.evaluationmatrix(sp, n)
+ret = Array{Complex128}(0)
+    for K=1:2, J=1:4
+        Up = component(U[K],J)
+        p = collocationpoints(space(Up), (n ÷ 2) ÷ 4)
+        append!(ret,Up.(p))
+    end
+    norm(E*coefficients(U) - ret)
+
+
+
+
+L = RiemannHilbert.rhmatrix(G.', 2*4*90)
+@test cond(L) ≤ 200
+
+sp = space(U)
+C₋ = fpcauchymatrix(sp, n, n)
+ret = Array{Complex128}(0)
+    for K=1:2, J=1:4
+        Up = component(U[K],J)
+        p = collocationpoints(space(Up), (n ÷ 2) ÷ 4)
+        append!(ret,cauchy.(p))
+    end
+    norm(C₋*coefficients(U) - ret)
+
+
+
+
 pts = collocationpoints(sp, n÷2)
+
+
 scatter(abs.(E*coefficients(U)  - [U[1].(pts);U[2].(pts)]))
 
 
-L = RiemannHilbert.rhmatrix(G.', 900)
-@which RiemannHilbert.rhmatrix(G.', 900)
+E*coefficients(U)  - [U[1].(pts);U[2].(pts)]
+
+@which rhsolve(G.', 2*4*20)
+
+Φ = rhsolve(G.', 2*4*250).'
+
+s=exp(im*π/6)
+    Φ(s*⁻)*G(s) - Φ(s*⁺) |>norm
+
+2*4*300
 
 g = G.'
 sp = space(g)[:,1]
@@ -588,10 +625,10 @@ L = RiemannHilbert.rhmatrix(G.', 900)
     cond(L)
 4*4*2
 n = 4*4*2
-Φ = rhsolve(G.', 2200).'
 
-s=exp(im*π/6)
-    Φ(s*⁻)*G(s) - Φ(s*⁺) |>norm
+
+
+
 
 
 @test Φ(s*⁻) ≈ Φ(s+eps())
