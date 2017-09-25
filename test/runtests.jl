@@ -553,9 +553,15 @@ for _=1:5
 end
 
 
-RiemannHilbert.rhmatrix(G.', 900) ≈ RiemannHilbert.rhmatrix(G.', 900)
+@test RiemannHilbert.rhmatrix(G.', 900) ≈ RiemannHilbert.rhmatrix(G.', 900)
 
 U = pad((G-I)[:,1],900)
+
+n = ncoefficients(U)
+E = RiemannHilbert.evaluationmatrix(sp, n)
+pts = collocationpoints(sp, n÷2)
+scatter(abs.(E*coefficients(U)  - [U[1].(pts);U[2].(pts)]))
+
 
 L = RiemannHilbert.rhmatrix(G.', 900)
 @which RiemannHilbert.rhmatrix(G.', 900)

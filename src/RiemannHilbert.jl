@@ -199,7 +199,7 @@ end
 
 
 function evaluationmatrix!(C, sp::ArraySpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})
-    @assert size(ns) == size(ms) == size(sp)
+    @assert length(ns) == length(ms) == length(sp)
     N = length(ns)
 
     n, m = sum(ns), sum(ms)
