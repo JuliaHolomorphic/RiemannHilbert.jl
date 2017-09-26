@@ -604,6 +604,29 @@ G = Fun( z -> if angle(z) ≈ π/6
                 end
                     , sp)
 
+Φ = rhsolve(G.', 2*4*100).'
+
+@time rhsolve(G.', 2*4*100).'
+
+
+n = 2*4*300
+@time RiemannHilbert.fpstieltjesmatrix(sp[:,1], n, n)
+
+@time RiemannHilbert.fpstieltjesmatrix(sp[1,1], n÷2, n÷2)
+
+RiemannHilbert.fpstieltjesmatrix(sp[1,1], 100,100
+sp[:,1]
+@profile rhsolve(G.', 2*4*200).'
+
+
+Profile.print()
+
+Φ(100.0)
+
+ApproxFun.components(Array(Φ)[1,2])
+
+
+
 
 @test map(g->first(components(g)[1]), G)*map(g->first(components(g)[2]), G)*
     map(g->first(components(g)[3]), G)*map(g->first(components(g)[4]), G) ≈ eye(2)
@@ -617,7 +640,9 @@ end
 @test RiemannHilbert.rhmatrix(G.', 900) ≈ RiemannHilbert.rhmatrix(G.', 900)
 
 
-Φ = rhsolve(G.', 2*4*200).'
+
+
+limit(Φ)
 
 U = RiemannHilbert.rh_sie_solve(G.', 2*4*100)
     -0.36706155154807807 - sum(U[1,2])/(-π*im)
