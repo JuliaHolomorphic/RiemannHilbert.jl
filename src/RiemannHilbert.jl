@@ -146,8 +146,8 @@ collocationpoints(sp::Space, m) = collocationpoints(domain(sp), m)
 
 collocationvalues(f::ScalarFun, n) = f.(collocationpoints(space(f), n))
 function collocationvalues(f::VectorFun, n)
-    pts = collocationpoints(space(f), n÷size(f,1))
-    mapreduce(f̃ -> f̃.(pts), vcat, f)
+    m = n÷size(f,1)
+    mapreduce(f̃ -> collocationvalues(f̃,m), vcat, f)
 end
 function collocationvalues(f::MatrixFun, n)
     M = size(f,2)
@@ -345,7 +345,7 @@ function multiplicationmatrix(G, n)
         kr = (K-1)*m + (1:m)
         jr = (J-1)*m + (1:m)
         V = view(ret, kr, jr)
-        view(V, diagind(V)) .= G[K,J].(pts)
+        view(V, diagind(V)) .= collocationvalues(G[K,J],m)
     end
     ret
 end

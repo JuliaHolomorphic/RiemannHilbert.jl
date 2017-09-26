@@ -535,29 +535,25 @@ pts = RiemannHilbert.collocationpoints(sp, n÷2)
 @test last(E*coefficients(U1)) ≈ U1(0.00000000001)[2]
 @test last(C₋*coefficients(U1)) ≈ cauchy(U1[2], 0.00000000001-eps()*im)
 @test cauchy(U1[1], 0.00000000001-eps()*im) ≈ (C₋*coefficients(U1))[n÷2]
-G[end,end]
-G
-g(0.00000000001)
+@test last(G*C₋*coefficients(U1)) ≈ ((g(0.00000000001)-I)*cauchy(U1, 0.00000000001-eps()*im))[2]
 
-last(G*C₋*coefficients(U1)) ≈ ((g(0.00000000001)-I)*cauchy(U1, 0.00000000001-eps()*im))[2]
+
+@test RiemannHilbert.collocationvalues((g-I)[:,1], n)[end] ≈ 0.1
 
 
 sp = ArraySpace(Legendre(0 .. -1) ∪ Legendre(0 .. 1), 2)
-G = Fun(x-> x ≥ 0 ? [1 exp(-40x^2); 0.1exp(-40x^2) 1] : inv([1 exp(-40x^2); 0.1exp(-40x^2) 1]), ArraySpace(sp[1], 2, 2))
-
-
-U1 = U[:,1]
-Ũ1 = Fun(x-> x ≥ 0 ? U1(x) : -U1(x), sp, ncoefficients(U1)÷2)
+G = g = Fun(x-> x ≥ 0 ? [1 exp(-40x^2); 0.1exp(-40x^2) 1] : inv([1 exp(-40x^2); 0.1exp(-40x^2) 1]), ArraySpace(sp[1], 2, 2))
+n=2ncoefficients(G)
+Ũ1 = Fun(x-> x ≥ 0 ? U1(x) : -U1(x), sp, n÷2)
 @test cauchy(Ũ1, 0.1⁻) ≈ cauchy(Ũ1, 0.1-eps()im)
 @test cauchy(Ũ1, 0.1+eps()im) ≈ cauchy(U1, 0.1+eps()im)
 @test cauchy(Ũ1, -0.1+eps()im) ≈ cauchy(U1, -0.1+eps()im)
 
 L = rhmatrix(G, n)
-rhs = RiemannHilbert.collocationvalues((G-I)[:,1], n)
-using Plots
-scatter(abs.(L*coefficients(Ũ1) - rhs))
-ncoefficients(Ũ1)
-n=2ncoefficients(G)
+rhs = RiemannHilbert.collocationvalues((g-I)[:,1], n)
+@test rhs[end] ≈ 0.1
+L*coefficients(Ũ1) - rhs |>norm
+
 Φ = rhsolve(G,n)
 
 g = G
@@ -565,23 +561,28 @@ sp = space(g)[:,1]
 C₋ = fpcauchymatrix(sp, n, n)
 G = RiemannHilbert.multiplicationmatrix(g-I, n)
 E = RiemannHilbert.evaluationmatrix(sp, n)
-E .- G*C₋
 
 pts = RiemannHilbert.collocationpoints(sp, n÷2)
+
 @test last(E*coefficients(Ũ1)) ≈ Ũ1(0.00000000001)[2]
 @test last(C₋*coefficients(Ũ1)) ≈ cauchy(Ũ1[2], 0.00000000001-eps()*im)
-last(G*C₋*coefficients(Ũ1))
+@test cauchy(Ũ1[1], 0.00000000001-eps()*im) ≈ (C₋*coefficients(Ũ1))[n÷2]
+@test G[[n÷2,n],[n÷2,n]] ≈ (g(0.00000000001)-I)
 
-g(0.00000000001)*cauchy(Ũ1, 0.00000000001-eps()*im)
+@test last(G*C₋*coefficients(Ũ1)) ≈ (g(0.00000000001)-I)[2,:].'*cauchy(Ũ1, 0.00000000001-eps()*im)
 
-
-
-
-g(0.00000000001)*cauchy(U1, 0.00000000001-eps()*im)
+L[end,:].'*coefficients(Ũ1) ≈ Ũ1(0.00000000001)[2] - (g(0.00000000001)-I)[2,:].'*cauchy(Ũ1, 0.00000000001-eps()*im)
 
 
+U1(0.00000000001)[2] - (g(0.00000000001)-I)[2,:].'*cauchy(U1, 0.00000000001-eps()*im)
 
-@test G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
+rhs[end]
+
+
+@test g(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
+
+
+G(0.1)*Φ(0.1⁻) , Φ(0.1⁺)
 
 
 
@@ -614,6 +615,24 @@ end
 
 
 @test RiemannHilbert.rhmatrix(G.', 900) ≈ RiemannHilbert.rhmatrix(G.', 900)
+
+
+Φ = rhsolve(G.', 2*4*200).'
+
+U = RiemannHilbert.rh_sie_solve(G.', 2*4*100)
+    -0.36706155154807807 - sum(U[1,2])/(-π*im)
+
+s=exp(im*π/6)
+    @test Φ(s*⁻)*G(s) ≈ Φ(s*⁺)
+
+@test cond(rhmatrix(G.', 2*4*100)) ≤ 1000
+cond(rhmatrix(G.', 2*4*200))
+
+Φ(s*⁻)*G(s) ≈ Φ(s*⁺)
+
+
+2*100000.0Φ(100000.0)[1,2]
+
 
 n = 2*4*20
 U = pad((G-I)[:,1],n)
@@ -729,17 +748,6 @@ G[1,1].(pts)
 
 import RiemannHilbert: pieces_npoints, collocationpoints, pieces
 
-
-
-function collocationvalues(f::Fun{<:PiecewiseSpace}, n::Int)
-    ns = pieces_npoints(space(f),n)
-    vcat(collocationvalues.(pieces(f),ns)...)
-end
-
-
-function collocationvalues(f::Fun{<:ArraySpace}, ns::Array)
-    vcat(collocationvalues.(Array(f),ns)...)
-end
 
 
 v_sp = ArraySpace(space(G)[:,1])
