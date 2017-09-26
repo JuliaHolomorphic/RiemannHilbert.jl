@@ -522,6 +522,66 @@ n=2ncoefficients(G)
 Φ = rhsolve(G,n)
 
 @test G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
+U = RiemannHilbert.rh_sie_solve(G,n)
+
+U1 = U[:,1]
+g = G
+sp = space(g)[:,1]
+C₋ = fpcauchymatrix(sp, n, n)
+G = RiemannHilbert.multiplicationmatrix(g-I, n)
+E = RiemannHilbert.evaluationmatrix(sp, n)
+
+pts = RiemannHilbert.collocationpoints(sp, n÷2)
+@test last(E*coefficients(U1)) ≈ U1(0.00000000001)[2]
+@test last(C₋*coefficients(U1)) ≈ cauchy(U1[2], 0.00000000001-eps()*im)
+@test cauchy(U1[1], 0.00000000001-eps()*im) ≈ (C₋*coefficients(U1))[n÷2]
+G[end,end]
+G
+g(0.00000000001)
+
+last(G*C₋*coefficients(U1)) ≈ ((g(0.00000000001)-I)*cauchy(U1, 0.00000000001-eps()*im))[2]
+
+
+sp = ArraySpace(Legendre(0 .. -1) ∪ Legendre(0 .. 1), 2)
+G = Fun(x-> x ≥ 0 ? [1 exp(-40x^2); 0.1exp(-40x^2) 1] : inv([1 exp(-40x^2); 0.1exp(-40x^2) 1]), ArraySpace(sp[1], 2, 2))
+
+
+U1 = U[:,1]
+Ũ1 = Fun(x-> x ≥ 0 ? U1(x) : -U1(x), sp, ncoefficients(U1)÷2)
+@test cauchy(Ũ1, 0.1⁻) ≈ cauchy(Ũ1, 0.1-eps()im)
+@test cauchy(Ũ1, 0.1+eps()im) ≈ cauchy(U1, 0.1+eps()im)
+@test cauchy(Ũ1, -0.1+eps()im) ≈ cauchy(U1, -0.1+eps()im)
+
+L = rhmatrix(G, n)
+rhs = RiemannHilbert.collocationvalues((G-I)[:,1], n)
+using Plots
+scatter(abs.(L*coefficients(Ũ1) - rhs))
+ncoefficients(Ũ1)
+n=2ncoefficients(G)
+Φ = rhsolve(G,n)
+
+g = G
+sp = space(g)[:,1]
+C₋ = fpcauchymatrix(sp, n, n)
+G = RiemannHilbert.multiplicationmatrix(g-I, n)
+E = RiemannHilbert.evaluationmatrix(sp, n)
+E .- G*C₋
+
+pts = RiemannHilbert.collocationpoints(sp, n÷2)
+@test last(E*coefficients(Ũ1)) ≈ Ũ1(0.00000000001)[2]
+@test last(C₋*coefficients(Ũ1)) ≈ cauchy(Ũ1[2], 0.00000000001-eps()*im)
+last(G*C₋*coefficients(Ũ1))
+
+g(0.00000000001)*cauchy(Ũ1, 0.00000000001-eps()*im)
+
+
+
+
+g(0.00000000001)*cauchy(U1, 0.00000000001-eps()*im)
+
+
+
+@test G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
 
 
 

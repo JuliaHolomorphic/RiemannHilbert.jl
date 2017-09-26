@@ -367,11 +367,14 @@ function rhmatrix(g::MatrixFun, n)
     E .- G*C₋
 end
 
+function rh_sie_solve(G::MatrixFun, n)
+    cfs = rhmatrix(G, n) \ (collocationvalues(G-I, n))
+    U = hcat([Fun(space(G)[:,J], cfs[:,J]) for J=1:size(G,2)]...)
+end
 
 rhsolve(g::ScalarFun, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
 function rhsolve(G::MatrixFun, n)
-    cfs = rhmatrix(G, n) \ (collocationvalues(G-I, n))
-    U = hcat([Fun(space(G)[:,J], cfs[:,J]) for J=1:size(G,2)]...)
+    U = rh_sie_solve(G, n)
     I+cauchy(U)
 end
 
