@@ -606,26 +606,9 @@ G = Fun( z -> if angle(z) ≈ π/6
 
 Φ = rhsolve(G.', 2*4*100).'
 
-@time rhsolve(G.', 2*4*100).'
 
-
-n = 2*4*300
-@time RiemannHilbert.fpstieltjesmatrix(sp[:,1], n, n)
-
-@time RiemannHilbert.fpstieltjesmatrix(sp[1,1], n÷2, n÷2)
-
-RiemannHilbert.fpstieltjesmatrix(sp[1,1], 100,100
-sp[:,1]
-@profile rhsolve(G.', 2*4*200).'
-
-
-Profile.print()
-
-Φ(100.0)
-
-ApproxFun.components(Array(Φ)[1,2])
-
-
+s=exp(im*π/6)
+    @test Φ(s*⁻)*G(s) ≈ Φ(s*⁺)
 
 
 @test map(g->first(components(g)[1]), G)*map(g->first(components(g)[2]), G)*
@@ -641,14 +624,31 @@ end
 
 
 
-
-limit(Φ)
-
 U = RiemannHilbert.rh_sie_solve(G.', 2*4*100)
-    -0.36706155154807807 - sum(U[1,2])/(-π*im)
+@test -0.36706155154807807 ≈ sum(U[1,2])/(-π*im)
 
-s=exp(im*π/6)
-    @test Φ(s*⁻)*G(s) ≈ Φ(s*⁺)
+
+G̃ = Fun( z -> if angle(z) ≈ π/6
+                    [1 0; s₁*exp(8im/3*z^3) 1]
+                elseif angle(z) ≈ 5π/6
+                    [1 0; s₃*exp(8im/3*z^3) 1]
+                elseif angle(z) ≈ -π/6
+                    [1 -s₃*exp(-8im/3*z^3); 0 1]
+                elseif angle(z) ≈ -5π/6
+                    [1 -s₁*exp(-8im/3*z^3); 0 1]
+                end
+                    , Γ)
+
+Ũ = RiemannHilbert.rh_sie_solve(G̃.', 2*4*100)
+
+
+@which RiemannHilbert.rh_sie_solve(G̃.', 2*4*100)
+
+@test rhmatrix(G.', 2*4*100) ≈ rhmatrix(G̃.', 2*4*100)
+
+@test -0.36706155154807807 ≈ sum(Ũ[1,2])/(-π*im)
+
+
 
 @test cond(rhmatrix(G.', 2*4*100)) ≤ 1000
 cond(rhmatrix(G.', 2*4*200))

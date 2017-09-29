@@ -5,7 +5,7 @@ using Base, ApproxFun, SingularIntegralEquations, DualNumbers
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!
 import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, Repeated, UnitCount, interlacer, IntervalDomain, pieces_npoints,
                     ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun
-import ApproxFun: PolynomialSpace, recA, recB, recC
+import ApproxFun: PolynomialSpace, recA, recB, recC, ichebyshevtransform!
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype, start, next, done,
                 >=, /, ^, \, ∪, transpose, size, to_indexes, reindex, tail, broadcast, broadcast!
@@ -145,6 +145,7 @@ collocationpoints(sp::Space, m) = collocationpoints(domain(sp), m)
 
 
 collocationvalues(f::ScalarFun, n) = f.(collocationpoints(space(f), n))
+collocationvalues(f::Fun{<:Chebyshev}, n) = ichebyshevtransform!(coefficients(pad(f,n)); kind=2)
 function collocationvalues(f::VectorFun, n)
     m = n÷size(f,1)
     mapreduce(f̃ -> collocationvalues(f̃,m), vcat, f)
@@ -351,7 +352,7 @@ function multiplicationmatrix(G, n)
 end
 
 function rhmatrix(g::ScalarFun, n)
-    sp = space(g)
+    sp = PiecewiseSpace(Legendre.(components(domain(g))))
     C₋ = fpcauchymatrix(sp, n, n)
     g_v = collocationvalues(g-1, n)
     E = evaluationmatrix(sp, n)
@@ -360,7 +361,7 @@ function rhmatrix(g::ScalarFun, n)
 end
 
 function rhmatrix(g::MatrixFun, n)
-    sp = space(g)[:,1]
+    sp = ArraySpace(PiecewiseSpace(Legendre.(components(domain(g)))), size(g,1))
     C₋ = fpcauchymatrix(sp, n, n)
     G = multiplicationmatrix(g-I, n)
     E = evaluationmatrix(sp, n)
@@ -368,8 +369,9 @@ function rhmatrix(g::MatrixFun, n)
 end
 
 function rh_sie_solve(G::MatrixFun, n)
+    sp = ArraySpace(PiecewiseSpace(Legendre.(components(domain(G)))), size(G,1))
     cfs = rhmatrix(G, n) \ (collocationvalues(G-I, n))
-    U = hcat([Fun(space(G)[:,J], cfs[:,J]) for J=1:size(G,2)]...)
+    U = hcat([Fun(sp, cfs[:,J]) for J=1:size(G,2)]...)
 end
 
 rhsolve(g::ScalarFun, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
