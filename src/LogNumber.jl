@@ -89,6 +89,13 @@ for f in (:+, :-, :*)
     end
 end
 
+for OP in (:*, :+, :-, :/)
+    @eval begin
+        $OP(a::Directed{s}, b::RiemannDual) where {s} = Directed{s}($OP(a.x,b))
+        $OP(a::RiemannDual, b::Directed{s}) where {s} = Directed{s}($OP(a,b.x))
+    end
+end
+
 function inv(z::RiemannDual)
     value(z) == 0 && return RiemannDual(Inf, inv(epsilon(z)))
     RiemannDual(inv(dual(z)))
@@ -130,7 +137,7 @@ SingularIntegralEquations.HypergeometricFunctions.speciallog(x::RiemannDual) =
 
 
 Base.show(io::IO, x::RiemannDual) = show(io, Dual(x))
-Base.show(io::IO, x::LogNumber) = print(io, "$(logpart(x))log ε + $(finitepart(x))")
+Base.show(io::IO, x::LogNumber) = print(io, "($(logpart(x)))log ε + $(finitepart(x))")
 
 # # (s*log(M) + c)*(p*M
 # function /(l::LogNumber, b::RiemannDual)

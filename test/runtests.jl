@@ -1,7 +1,7 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, Base.Test
-    import ApproxFun: ArraySpace
+    import ApproxFun: ArraySpace, pieces
     import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedlast, finitepart, fpcauchymatrix
-    import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻
+    import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻, istieltjes
     import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
 for h in (0.1,0.01), a in (2exp(0.1im),1.1)
@@ -993,3 +993,87 @@ using Plots
 scatter(real(pts), imag(pts))
 
 Array(G)
+
+
+
+###
+
+Γ = Segment(0, 2.5exp(im*π/6))   ∪
+    Segment(0, 2.5exp(5im*π/6))  ∪
+    Segment(0, 2.5exp(-5im*π/6)) ∪
+    Segment(0, 2.5exp(-im*π/6))
+
+s₁ = im
+s₃ = -im
+
+G = Fun( z -> if angle(z) ≈ π/6
+                    [1                 0;
+                     s₁*exp(8im/3*z^3) 1]
+                elseif angle(z) ≈ 5π/6
+                    [1                 0;
+                     s₃*exp(8im/3*z^3) 1]
+                elseif angle(z) ≈ -π/6
+                    [1                -s₃*exp(-8im/3*z^3);
+                     0                 1]
+                elseif angle(z) ≈ -5π/6
+                    [1                -s₁*exp(-8im/3*z^3);
+                     0                 1]
+                end
+                    , Γ);
+
+
+Φ = rhsolve(G.', 800).'
+
+
+U = istieltjes(Φ)
+
+
+RiemannDual(0,exp(im*π/6))⁺
+
+Φ₁⁺ = I + finitepart.(stieltjes(U,RiemannDual(0,exp(im*π/6))⁺))
+Φ₁⁻ = I + finitepart.(stieltjes(U,RiemannDual(0,exp(im*π/6))⁻))
+
+
+Φ₁⁺
+
+
+
+Φ(10.0) ≈ I+stieltjes(U,10.0)
+a,b,c,d = pieces(U)
+
+angle(domain(a))
+
+π/6.0
+finitepart.(stieltjes(a,RiemannDual(0,exp(im*π/6))⁺) +
+    stieltjes(b,RiemannDual(0,exp(im*π/6))) +
+    stieltjes(c,RiemannDual(0,exp(im*π/6))) +
+    stieltjes(d,RiemannDual(0,exp(im*π/6))))
+stieltjes(U,)
+Φ₁⁺
+Φ(0.00001ζ+100im*eps())-I
+
+
+Φ₁⁻*(pieces(G)[1])(0.)
+
+
+
+
+Φ(ζ+100im*eps()) ≈ Φ(ζ-100im*eps())G(ζ)
+
+
+Φ(ζ*⁺)
+
+
+
+
+
+
+Φ = rhsolve(G.', 800).'
+
+ζ = exp(im*π/6)
+G(ζ)
+
+
+
+
+Φ(ζ*⁺) - Φ(ζ*⁻)*G(ζ)|>norm
