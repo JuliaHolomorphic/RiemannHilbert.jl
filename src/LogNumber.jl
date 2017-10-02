@@ -33,8 +33,12 @@ end
 
 -(l::LogNumber) = LogNumber(-l.s, -l.c)
 
-*(l::LogNumber, b::Number) = LogNumber(l.s*b, l.c*b)
-*(a::Number, l::LogNumber) = LogNumber(a*l.s, a*l.c)
+for Typ in (:Bool, :Number)
+    @eval begin
+        *(l::LogNumber, b::$Typ) = LogNumber(l.s*b, l.c*b)
+        *(a::$Typ, l::LogNumber) = LogNumber(a*l.s, a*l.c)
+    end
+end
 /(l::LogNumber, b::Number) = LogNumber(l.s/b, l.c/b)
 
 function exp(l::LogNumber)::Complex128
@@ -65,6 +69,7 @@ dual(x::RiemannDual) = Dual(x)
 value(r::RiemannDual) = r.value
 epsilon(r::RiemannDual) = r.epsilon
 undirected(r::RiemannDual) = undirected(value(r))
+isinf(r::RiemannDual) = isinf(value(r))
 
 for f in (:-,)
     @eval $f(x::RiemannDual) = RiemannDual($f(value(x)),$f(epsilon(x)))
@@ -75,10 +80,12 @@ for f in (:sqrt,)
 end
 
 for f in (:+, :-, :*)
-    @eval begin
-        $f(x::RiemannDual, y::RiemannDual) = RiemannDual($f(dual(x),dual(y)))
-        $f(x::RiemannDual, p::Number) = RiemannDual($f(dual(x),p))
-        $f(p::Number, x::RiemannDual) = RiemannDual($f(p,dual(x)))
+    @eval $f(x::RiemannDual, y::RiemannDual) = RiemannDual($f(dual(x),dual(y)))
+    for Typ in (:Bool, :Number)
+        @eval begin
+            $f(x::RiemannDual, p::$Typ) = RiemannDual($f(dual(x),p))
+            $f(p::$Typ, x::RiemannDual) = RiemannDual($f(p,dual(x)))
+        end
     end
 end
 
@@ -121,6 +128,9 @@ log1p(z::RiemannDual) = log(z+1)
 SingularIntegralEquations.HypergeometricFunctions.speciallog(x::RiemannDual) =
     (s = sqrt(x); 3(atanh(s)-value(s))/value(s)^3)
 
+
+Base.show(io::IO, x::RiemannDual) = show(io, Dual(x))
+Base.show(io::IO, x::LogNumber) = print(io, "$(logpart(x))log ε + $(finitepart(x))")
 
 # # (s*log(M) + c)*(p*M
 # function /(l::LogNumber, b::RiemannDual)

@@ -648,6 +648,183 @@ Ũ = RiemannHilbert.rh_sie_solve(G̃.', 2*4*100)
 
 @test -0.36706155154807807 ≈ sum(Ũ[1,2])/(-π*im)
 
+Φ[1,1]
+
+SingularIntegralEquations.istieltjes(Φ[1,1])
+stieltjes(SingularIntegralEquations.istieltjes(Φ[1,1]),2+5)
+
+
+V = SingularIntegralEquations.istieltjes(Φ)
+x = Fun(domain(V))
+
+10.0I + sum.(Array(V)) + stieltjes(x*V, 10.0)
+
+
+
+
+
+@test (z*Φ)(10.0) ≈ 10.0Φ(10.0)
+
+
+
+
+
+
+spacescompatible(AffineSpace(ComplexPlane()), AffineSpace(ComplexPlane()))s
+@which z*component(Array(Φ)[1,1],5)
+
+
+
+
+
+v = map(f -> z*f, components(Φ[1,2]))
+
+
+(v[1] + v[3])(10.0)
+ApproxFun.spacescompatible(v[1], v[2])
+
+Fun(v[1], space(v[1]))
+sp = union(space(v[1]), space(v[2]))
+Fun(v[1], sp)
+ApproxFun.isconvertible(space(v[1]), sp.spaces[2])
+maxspace(space(v[1]).spaces[2], sp.spaces[2])
+
+sp.spaces[1]
+ApproxFun.canonicalspace(sp)
+
+coefficients(v[1], sp)
+space(v[1] + v[3])
+
+space(v[1])
+@which ApproxFun.spacescompatible(component(space(v[1]),2), component(space(v[2]),2))
+
+v[3](10.0)
+
+
+
+(z*φ)(10.0) - 10.0φ(10.0)
+using SO
+@which stieltjes(istieltjes(Φ))
+
+c = zero(prectype(space(z)))
+r = Array{Fun}(0)
+Φ = Φ[1,2]
+for φ in components(Φ)
+    a,b = components(z*φ)
+    c += Number(a)
+    push!(r, b)
+end
+
+⊕(r...)
+
+
+istieltjes(U)
+
+ component(Φ,1) + component(Φ,2)
+
+(z*Φ)
+
+
+(z*Φ)(20.0)
+20.0Φ(20.0)
+
+
+(z*component(Φ[1,2],4))(10.0)+(z*component(Φ[1,2],3))(10.0)
+
+
+a1,b1 = components(z*component(Φ[1,2],4))
+a2,b2 = components(z*component(Φ[1,2],3))
+space(b2)
+space(b1)
+
+
+space(component(Φ[1,2],3))
+space(component(Φ[1,2],3))
+
+
+
+(b2⊕b1)
+(b2+b1)(10.0)
+b2(10.0) + b1(10.0)
+10.0component(Φ[1,2],4)(10.0)
+
+ApproxFun.prectype(space(z))
+
+v = map(f -> z*f, components(φ))
+
+component(v[1],2)+component(v[2],2)
+
+φ = Φ[1,1]
+
+components(φ)
+φ = component(φ,1)
+a = coefficient(z,1)
+b = coefficient(z,2)
+u = istieltjes(φ)
+x = Fun(domain(u))
+@which domain(stieltjes(a*u + b*x*u).space )
+
+stieltjes(a*u + b*x*u).space
+
+z*components(φ)[1] |>domain
+domain.(map(f -> z*f, components(φ)))
+z*φ
+
+
+
+p = components(u)
+u = p[1]
+x = Fun(domain(u))
+stieltjes(x*u)
+u.coefficients[1]
+
+(sum(u)+stieltjes(x*u))(10.0)
+
+10.0stieltjes(u, 10.0)
+
+Fun(AffineSpace(ComplexPlane()), Float64[1,2])(0.1)
+
+
+0.1 ∈ ComplexPlane()1!~1
+
+Fun(::typeof(identity), ::ComplexPlane)
+
+Fun(identity,ComplexPlane())
+
+f = Φ[1,2]
+
+
+10Φ(10.0)
+
+stieltjes(10V[1,2],10.0)
+
+
+stieltjes((10-x)V[1,2],10.0) + stieltjes(x*V[1,2],10.0)
+
+
+
+stieltjes((10-x)V[1,2],10.0)
+
+
+
+10.0linesum.(Array(V))
+
+10.0*Φ(10.0)
+
+
+Φ(7)
+
+
+Φ[1,2](7)
+
+space(Φ)
+space(component(Ũ[1,1],1))
+coefficients(component(Ũ[1,1],1))
+@which stieltjes(Fun(space(component(Ũ[1,1],1)),collect(coefficients(component(Ũ[1,1],1)))))
+
+RiemannHilbert.ComplexPlane()
+
+z/(z-x) == (z-x)/(z-x) + x/(z-x)
 
 
 @test cond(rhmatrix(G.', 2*4*100)) ≤ 1000

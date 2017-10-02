@@ -2,13 +2,15 @@ module RiemannHilbert
 using Base, ApproxFun, SingularIntegralEquations, DualNumbers
 
 
-import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!
+import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ
 import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, Repeated, UnitCount, interlacer, IntervalDomain, pieces_npoints,
                     ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun
 import ApproxFun: PolynomialSpace, recA, recB, recC, ichebyshevtransform!
+import ApproxFun: dimension, evaluate, prectype, identity_fun, Space, SumSpace, spacescompatible
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype, start, next, done,
-                >=, /, ^, \, ∪, transpose, size, to_indexes, reindex, tail, broadcast, broadcast!
+                >=, /, ^, \, ∪, transpose, size, to_indexes, reindex, tail, broadcast, broadcast!,
+                isinf
 
 # we need to import all special functions to use Calculus.symbolic_derivatives_1arg
 # we can't do importall Base as we replace some Base definitions
@@ -27,7 +29,8 @@ import Base: sinpi, cospi, airy, besselh, exp,
 
 import DualNumbers: Dual, value, epsilon, dual
 
-export cauchymatrix, rhmatrix, rhsolve
+
+export cauchymatrix, rhmatrix, rhsolve, ℂ
 
 include("LogNumber.jl")
 
@@ -379,5 +382,46 @@ function rhsolve(G::MatrixFun, n)
     U = rh_sie_solve(G, n)
     I+cauchy(U)
 end
+
+
+
+## AffineSpace
+
+struct AffineSpace{DD,RR} <: Space{DD,RR}
+    domain::DD
+end
+
+AffineSpace(d::Domain) = AffineSpace{typeof(d),prectype(d)}(d)
+spacescompatible(::AffineSpace, ::AffineSpace) = true
+
+
+dimension(::AffineSpace) = 2
+
+function evaluate(v::AbstractVector{T}, s::AffineSpace, x::V) where {T,V}
+    @assert length(v) ≤ 2
+    (isempty(v) || x ∉ domain(s)) && return zero(promote_type(T,V))
+    length(v) == 1 && return v[1] + zero(x)
+    v[1] + v[2]*x
+end
+
+identity_fun(S::AffineSpace) = Fun(S, [0.0,1.0])
+
+Space(d::ComplexPlane) = AffineSpace(d)
+
+*(φ::Fun, z::Fun{<:AffineSpace}) = z*φ
+
+function *(z::Fun{<:AffineSpace}, φ::Fun{<:JacobiQ})
+    a = coefficient(z,1)
+    b = coefficient(z,2)
+    u = istieltjes(φ)
+    x = Fun(domain(u))
+    b*sum(u)+stieltjes(a*u + b*x*u)
+end
+
+*(z::Fun{<:AffineSpace}, φ::Fun{<:ConstantSpace}) = Fun(space(z),Number(φ)*coefficients(z))
+*(z::Fun{<:AffineSpace}, Φ::Fun{<:SumSpace}) = mapreduce(f -> z*f, +, components(Φ))
+*(z::Fun{<:AffineSpace}, Φ::Fun{<:ArraySpace}) = Fun(z.*Array(Φ))
+
+
 
 end #module
