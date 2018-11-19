@@ -1,5 +1,5 @@
 module RiemannHilbert
-using Base, ApproxFun, SingularIntegralEquations, DualNumbers
+using Base, ApproxFun, SingularIntegralEquations, DualNumbers, LinearAlgebra
 
 
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ

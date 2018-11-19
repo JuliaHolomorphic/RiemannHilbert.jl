@@ -1,0 +1,4 @@
+julia 0.7
+ApproxFun 0.10.1
+SingularIntegralEquations 0.4.1
+DualNumbers 0.6

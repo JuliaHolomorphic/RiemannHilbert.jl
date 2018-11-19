@@ -1,4 +1,4 @@
-using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, Base.Test
+using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, Test
     import ApproxFun: ArraySpace, pieces
     import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedlast, finitepart, fpcauchymatrix
     import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻, istieltjes
