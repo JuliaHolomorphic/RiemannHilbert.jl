@@ -1,34 +1,45 @@
 module RiemannHilbert
-using Base, ApproxFun, SingularIntegralEquations, DualNumbers, LinearAlgebra
+using Base, ApproxFun, SingularIntegralEquations, DualNumbers, LinearAlgebra,
+        SpecialFunctions, FillArrays, SparseArrays, DomainSets
+
+
+import DomainSets: UnionDomain, TypedEndpointsInterval
 
 
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ
-import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, Repeated, UnitCount, interlacer, IntervalDomain, pieces_npoints,
+import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, interlacer, pieces_npoints,
                     ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun
-import ApproxFun: PolynomialSpace, recA, recB, recC, ichebyshevtransform!
-import ApproxFun: dimension, evaluate, prectype, identity_fun, Space, SumSpace, spacescompatible
+import ApproxFun: PolynomialSpace, recA, recB, recC, IntervalOrSegmentDomain, IntervalOrSegment
+import ApproxFun: dimension, evaluate, prectype, Space, SumSpace, spacescompatible
 
-import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype, start, next, done,
-                >=, /, ^, \, ∪, transpose, size, to_indexes, reindex, tail, broadcast, broadcast!,
-                isinf
+import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
+                >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
+                isinf, in
 
 # we need to import all special functions to use Calculus.symbolic_derivatives_1arg
 # we can't do importall Base as we replace some Base definitions
-import Base: sinpi, cospi, airy, besselh, exp,
-                asinh, acosh,atanh, erfcx, dawson, erf, erfi,
-                sin, cos, sinh, cosh, airyai, airybi, airyaiprime, airybiprime,
-                hankelh1, hankelh2, besselj, bessely, besseli, besselk,
-                besselkx, hankelh1x, hankelh2x, exp2, exp10, log2, log10,
+import Base: sinpi, cospi, exp,
+                asinh, acosh,atanh,
+                sin, cos, sinh, cosh,
+                exp2, exp10, log2, log10,
                 tan, tanh, csc, asin, acsc, sec, acos, asec,
                 cot, atan, acot, sinh, csch, asinh, acsch,
                 sech, acosh, asech, tanh, coth, atanh, acoth,
-                expm1, log1p, lfact, sinc, cosc, erfinv, erfcinv, beta, lbeta,
-                eta, zeta, gamma,  lgamma, polygamma, invdigamma, digamma, trigamma,
+                expm1, log1p, sinc, cosc,
                 abs, sign, log, expm1, tan, abs2, sqrt, angle, max, min, cbrt, log,
-                atan, acos, asin, erfc, inv, real, imag, abs, conj
+                atan, acos, asin, inv, real, imag, abs
 
-import DualNumbers: Dual, value, epsilon, dual
+import LinearAlgebra: conj, transpose
 
+import SpecialFunctions: airy, besselh, erfcx, dawson, erf, erfi,
+                airyai, airybi, airyaiprime, airybiprime,
+                hankelh1, hankelh2, besselj, bessely, besseli, besselk,
+                besselkx, hankelh1x, hankelh2x, lfact,
+                erfinv, erfcinv, erfc, beta, lbeta,
+                eta, zeta, gamma,  lgamma, polygamma, invdigamma, digamma, trigamma
+
+import DualNumbers: Dual, realpart, epsilon, dual
+import FillArrays: AbstractFill
 
 export cauchymatrix, rhmatrix, rhsolve, ℂ
 
@@ -37,7 +48,7 @@ include("LogNumber.jl")
 
 
 function component_indices(it::BlockInterlacer, N::Int, kr::UnitRange)
-    ret = Array{Int}(0)
+    ret = Vector{Int}()
     ind = 1
     k_end = last(kr)
     for (M,j) in it
@@ -49,16 +60,9 @@ function component_indices(it::BlockInterlacer, N::Int, kr::UnitRange)
 end
 
 
-function component_indices(it::BlockInterlacer{NTuple{N,Repeated{Bool}}}, k::Int, kr::UnitRange) where N
+function component_indices(it::BlockInterlacer{NTuple{N,<:AbstractFill{Bool}}}, k::Int, kr::AbstractUnitRange) where N
     b = length(it.blocks)
     k + (first(kr)-1)*b:b:k + (last(kr)-1)*b
-end
-
-
-
-function component_indices(it::BlockInterlacer{NTuple{N,Repeated{Bool}}}, k::Int, kr::UnitCount) where N
-    b = length(it.blocks)
-    k + (first(kr)-1)*b:b:∞
 end
 
 component_indices(sp::Space, k...) = component_indices(interlacer(sp), k...)
@@ -111,7 +115,7 @@ component_indices(sp::Space, k...) = component_indices(interlacer(sp), k...)
 #
 # function stieltjesmatrix(space,pts::Vector,s::Bool)
 #     n=length(pts)
-#     C=Array(Complex128,n,n)
+#     C=Array(ComplexF64,n,n)
 #     for k=1:n
 #          C[k,:] = stieltjesforward(s,space,n,pts[k])
 #     end
@@ -120,7 +124,7 @@ component_indices(sp::Space, k...) = component_indices(interlacer(sp), k...)
 #
 # function stieltjesmatrix(space,pts::Vector)
 #     n=length(pts)
-#     C=zeros(Complex128,n,n)
+#     C=zeros(ComplexF64,n,n)
 #     for k=1:n
 #         cfs = stieltjesbackward(space,pts[k])
 #         C[k,1:min(length(cfs),n)] = cfs
@@ -135,12 +139,12 @@ component_indices(sp::Space, k...) = component_indices(interlacer(sp), k...)
 
 
 
-orientedfirst(d::Segment) = RiemannDual(first(d), sign(d))
-orientedlast(d::Segment) = RiemannDual(last(d), -sign(d))
+orientedleftendpoint(d::IntervalOrSegment) = RiemannDual(leftendpoint(d), sign(d))
+orientedrightendpoint(d::IntervalOrSegment) = RiemannDual(rightendpoint(d), -sign(d))
 
 
 # use 2nd kind to include endpoints
-collocationpoints(d::IntervalDomain, m::Int) = points(d, m; kind=2)
+collocationpoints(d::IntervalOrSegmentDomain, m::Int) = points(d, m; kind=2)
 collocationpoints(d::UnionDomain, ms::AbstractVector{Int}) = vcat(collocationpoints.(pieces(d), ms)...)
 collocationpoints(d::UnionDomain, m::Int) = collocationpoints(d, pieces_npoints(d,m))
 
@@ -180,7 +184,7 @@ evaluationmatrix!(E, sp::PolynomialSpace) =
     evaluationmatrix!(E, sp, collocationpoints(sp, size(E,1)))
 
 evaluationmatrix(sp::PolynomialSpace, x, n) =
-    evaluationmatrix!(Array{Float64}(length(x), n), sp,x)
+    evaluationmatrix!(Array{Float64}(undef, length(x), n), sp,x)
 
 
 function evaluationmatrix!(C, sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})
@@ -228,31 +232,31 @@ evaluationmatrix!(C, sp::ArraySpace) =
     evaluationmatrix!(C, sp, components_npoints(sp, size(C,1)), components_npoints(sp, size(C,2)))
 
 
-evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(n,n), sp)
+evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(undef,n,n), sp)
 
 
 function fpstieltjesmatrix!(C, sp, d)
     m, n = size(C)
     pts = collocationpoints(d, m)
     if d == domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, Directed{false}(orientedlast(d)), finitepart)
+        stieltjesmoment!(view(C,1,:), sp, Directed{false}(orientedrightendpoint(d)), finitepart)
         for k=2:m-1
             stieltjesmoment!(view(C,k,:), sp, Directed{false}(pts[k]))
         end
-        stieltjesmoment!(view(C,m,:), sp, Directed{false}(orientedfirst(d)), finitepart)
-    elseif first(d) == domain(sp) && last(d) ∈ domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, orientedlast(d), finitepart)
+        stieltjesmoment!(view(C,m,:), sp, Directed{false}(orientedleftendpoint(d)), finitepart)
+    elseif leftendpoint(d) ∈ domain(sp) && rightendpoint(d) ∈ domain(sp)
+        stieltjesmoment!(view(C,1,:), sp, orientedrightendpoint(d), finitepart)
         for k=2:m-1
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end
-        stieltjesmoment!(view(C,m,:), sp, orientedfirst(d), finitepart)
-    elseif first(d) ∈ domain(sp)
+        stieltjesmoment!(view(C,m,:), sp, orientedleftendpoint(d), finitepart)
+    elseif leftendpoint(d) ∈ domain(sp)
         for k=1:m-1
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end
-        stieltjesmoment!(view(C,m,:), sp, orientedfirst(d), finitepart)
-    elseif last(d) ∈ domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, orientedlast(d), finitepart)
+        stieltjesmoment!(view(C,m,:), sp, orientedleftendpoint(d), finitepart)
+    elseif rightendpoint(d) ∈ domain(sp)
+        stieltjesmoment!(view(C,1,:), sp, orientedrightendpoint(d), finitepart)
         for k=2:m
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end
@@ -266,9 +270,11 @@ end
 
 fpstieltjesmatrix!(C, sp) = fpstieltjesmatrix!(C, sp, domain(sp))
 
-fpstieltjesmatrix(sp::Space, d::Domain, n::Int, m::Int) = fpstieltjesmatrix!(Array{Complex128}(n, m), sp, d)
+fpstieltjesmatrix(sp::Space, d::Domain, n::Int, m::Int) =
+    fpstieltjesmatrix!(Array{ComplexF64}(undef, n, m), sp, d)
 
-fpstieltjesmatrix(sp::Space, n::Int, m::Int) = fpstieltjesmatrix!(Array{Complex128}(n, m), sp, domain(sp))
+fpstieltjesmatrix(sp::Space, n::Int, m::Int) =
+    fpstieltjesmatrix!(Array{ComplexF64}(undef, n, m), sp, domain(sp))
 
 
 # we group points together by piece
@@ -294,7 +300,7 @@ end
 
 
 fpstieltjesmatrix(sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::AbstractVector{Int}) =
-    fpstieltjesmatrix!(Array{Complex128}(sum(ns), sum(ms)), sp, ns, ms)
+    fpstieltjesmatrix!(Array{ComplexF64}(undef, sum(ns), sum(ms)), sp, ns, ms)
 
 fpstieltjesmatrix!(C, sp::PiecewiseSpace) = fpstieltjesmatrix!(C, sp, pieces_npoints(sp, size(C,1)), pieces_npoints(sp, size(C,2)))
 fpstieltjesmatrix(sp::PiecewiseSpace, n::Int, m::Int) = fpstieltjesmatrix(sp, pieces_npoints(sp, n), pieces_npoints(sp, m))
@@ -306,7 +312,7 @@ function fpstieltjesmatrix(sp::ArraySpace, ns::AbstractArray{Int}, ms::AbstractA
     N = length(ns)
 
     n, m = sum(ns), sum(ms)
-    C = zeros(Complex128, n, m)
+    C = zeros(ComplexF64, n, m)
 
     for J = 1:N
         jr = component_indices(sp, J, 1:ms[J]) ∩ (1:m)

@@ -2,8 +2,8 @@
 
 # represents s*log(ε) + c as ε -> 0
 struct LogNumber <: Number
-    s::Complex128
-    c::Complex128
+    s::ComplexF64
+    c::ComplexF64
 end
 
 
@@ -41,7 +41,7 @@ for Typ in (:Bool, :Number)
 end
 /(l::LogNumber, b::Number) = LogNumber(l.s/b, l.c/b)
 
-function exp(l::LogNumber)::Complex128
+function exp(l::LogNumber)::ComplexF64
     if real(l.s) > 0
         0.0+0.0im
     elseif real(l.s) < 0
@@ -53,26 +53,29 @@ function exp(l::LogNumber)::Complex128
     end
 end
 
-# This is a relative version of dual number, in the sense that its value*(1+epsilon)
+# This is a relative version of dual number, in the sense that its realpart*(1+epsilon)
 struct RiemannDual{T} <: Number
-    value::T
+    realpart::T
     epsilon::T
 end
 
 RiemannDual(x, y) = RiemannDual(promote(x, y)...)
 
-RiemannDual(x::Dual) = RiemannDual(value(x), epsilon(x))
-Dual(x::RiemannDual) = Dual(value(x), epsilon(x))
+RiemannDual(x::Dual) = RiemannDual(realpart(x), epsilon(x))
+Dual(x::RiemannDual) = Dual(realpart(x), epsilon(x))
 dual(x::RiemannDual) = Dual(x)
 
 # the relative perturbation
-value(r::RiemannDual) = r.value
+realpart(r::RiemannDual) = r.realpart
 epsilon(r::RiemannDual) = r.epsilon
-undirected(r::RiemannDual) = undirected(value(r))
-isinf(r::RiemannDual) = isinf(value(r))
+undirected(r::RiemannDual) = undirected(realpart(r))
+isinf(r::RiemannDual) = isinf(realpart(r))
+
+in(x::RiemannDual, d::Domain) = realpart(x) ∈ d
+in(x::RiemannDual, d::TypedEndpointsInterval{:closed,:closed}) = realpart(x) ∈ d
 
 for f in (:-,)
-    @eval $f(x::RiemannDual) = RiemannDual($f(value(x)),$f(epsilon(x)))
+    @eval $f(x::RiemannDual) = RiemannDual($f(realpart(x)),$f(epsilon(x)))
 end
 
 for f in (:sqrt,)
@@ -97,7 +100,7 @@ for OP in (:*, :+, :-, :/)
 end
 
 function inv(z::RiemannDual)
-    value(z) == 0 && return RiemannDual(Inf, inv(epsilon(z)))
+    realpart(z) == 0 && return RiemannDual(Inf, inv(epsilon(z)))
     RiemannDual(inv(dual(z)))
 end
 
@@ -108,18 +111,18 @@ end
 
 # loses sign information
 for f in (:real, :imag, :abs)
-    @eval $f(z::RiemannDual) = $f(value(z))
+    @eval $f(z::RiemannDual) = $f(realpart(z))
 end
 
 function log(z::RiemannDual)
-    @assert value(z) == 0 || isinf(value(z))
-    LogNumber(value(z) == 0 ? 1 : -1, log(abs(epsilon(z))) + im*angle(epsilon(z)))
+    @assert realpart(z) == 0 || isinf(realpart(z))
+    LogNumber(realpart(z) == 0 ? 1 : -1, log(abs(epsilon(z))) + im*angle(epsilon(z)))
 end
 
 function atanh(z::RiemannDual)
-    if value(z) ≈ 1
+    if realpart(z) ≈ 1
         LogNumber(-0.5,log(2)/2  - log(abs(epsilon(z)))/2 - im/2*angle(-epsilon(z)))
-    elseif value(z) ≈ -1
+    elseif realpart(z) ≈ -1
         LogNumber(0.5,-log(2)/2  + log(abs(epsilon(z)))/2 + im/2*angle(epsilon(z)))
     else
         error("Not implemented")
@@ -133,7 +136,7 @@ end
 log1p(z::RiemannDual) = log(z+1)
 
 SingularIntegralEquations.HypergeometricFunctions.speciallog(x::RiemannDual) =
-    (s = sqrt(x); 3(atanh(s)-value(s))/value(s)^3)
+    (s = sqrt(x); 3(atanh(s)-realpart(s))/realpart(s)^3)
 
 
 Base.show(io::IO, x::RiemannDual) = show(io, Dual(x))
@@ -141,5 +144,5 @@ Base.show(io::IO, x::LogNumber) = print(io, "($(logpart(x)))log ε + $(finitepar
 
 # # (s*log(M) + c)*(p*M
 # function /(l::LogNumber, b::RiemannDual)
-#     @assert isinf(value(b))
+#     @assert isinf(realpart(b))
 #     LogNumber(l.s/b, l.c/b)
