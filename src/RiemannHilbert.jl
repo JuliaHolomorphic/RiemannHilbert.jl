@@ -1,16 +1,18 @@
 module RiemannHilbert
 using Base, ApproxFun, SingularIntegralEquations, DualNumbers, LinearAlgebra,
-        SpecialFunctions, FillArrays, SparseArrays, DomainSets
+        SpecialFunctions, FillArrays, SparseArrays, DomainSets, FastTransforms
 
 
 import DomainSets: UnionDomain, TypedEndpointsInterval
+
+import FastTransforms: ichebyshevtransform!
 
 
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ
 import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, interlacer, pieces_npoints,
                     ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun
 import ApproxFun: PolynomialSpace, recA, recB, recC, IntervalOrSegmentDomain, IntervalOrSegment
-import ApproxFun: dimension, evaluate, prectype, Space, SumSpace, spacescompatible
+import ApproxFun: dimension, evaluate, prectype, cfstype, Space, SumSpace, spacescompatible
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
                 >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
@@ -159,7 +161,7 @@ function collocationvalues(f::VectorFun, n)
 end
 function collocationvalues(f::MatrixFun, n)
     M = size(f,2)
-    ret = Array{eltype(f)}(n, M)
+    ret = Array{cfstype(f)}(undef, n, M)
     for J=1:M
         ret[:,J] = collocationvalues(f[:,J], n)
     end
@@ -169,9 +171,9 @@ end
 collocationvalues(f::Fun{<:PiecewiseSpace}, n) = vcat(collocationvalues.(components(f), pieces_npoints(domain(f),n))...)
 
 function evaluationmatrix!(E, sp::PolynomialSpace, x)
-    x .= tocanonical.(sp, x)
+    x .= tocanonical.(Ref(sp), x)
 
-    E[:,1] = 1
+    E[:,1] .= 1
     E[:,2] .= (recA(Float64,sp,0) .* x .+ recB(Float64,sp,0)) .* view(E,:,1)
     for j = 3:size(E,2)
         E[:,j] .= (recA(Float64,sp,j-2) .* x .+ recB(Float64,sp,j-2)) .* view(E,:,j-1) .- recC(Float64,sp,j-2).*view(E,:,j-2)
@@ -348,12 +350,12 @@ function multiplicationmatrix(G, n)
     N, M = size(G)
     @assert N == M
     sp = space(G)
-    ret = spzeros(eltype(G), n, n)
+    ret = spzeros(cfstype(G), n, n)
     m = n ÷ N
     pts = collocationpoints(sp, m)
     for K=1:N,J=1:M
-        kr = (K-1)*m + (1:m)
-        jr = (J-1)*m + (1:m)
+        kr = (K-1)*m .+ (1:m)
+        jr = (J-1)*m .+ (1:m)
         V = view(ret, kr, jr)
         view(V, diagind(V)) .= collocationvalues(G[K,J],m)
     end
