@@ -44,23 +44,35 @@ end
 tFun(f, d::Space, n) = Fun(d, transform(d,tvalues(f,d,n)))
 
 tFun(f, d, n) = tFun(f, Space(d), n)
-
-R = ReflectionCoefficient(x -> 0.1sech(x))
+V = x -> 0.1sech(x)
+R = ReflectionCoefficient(V)
 @time ρ = tFun(R, -5.0..5, 601)
 plot(abs.(ρ.coefficients); yscale=:log10)
 plot(ρ)
 
+f = Fun(exp)
+F = [f f; f 1.0]
+F(0.1)
 
 G = [1-abs2.(ρ) -conj.(ρ);
      ρ           1.0]
 
 
-Φ = transpose(rhsolve(transpose(G), 2*4*100))
-
-Φ(0.1+eps()im)
+Φ = transpose(rhsolve(transpose(G), 2*4*200))
 
 
+Φ(100.0im)*[1,1]
 
+Φ(0.1+eps()im) - Φ(0.1-eps()im)*G(0.1)
+
+
+D^2 + Fun(V, -10..10)
+
+
+z = Fun(ℂ)
+-2im*(z*Φ[2,1])(Inf)
+-2im*1000Φ[2,1](1000)
+0.1sech(0.0)
 
 Φ(100.0im)
 

@@ -412,7 +412,8 @@ function evaluate(v::AbstractVector{T}, s::AffineSpace, x::V) where {T,V}
     v[1] + v[2]*x
 end
 
-identity_fun(S::AffineSpace) = Fun(S, [0.0,1.0])
+Fun(::typeof(identity), S::AffineSpace) = Fun(S, [0.0,1.0])
+Fun(::typeof(identity), S::ComplexPlane) = Fun(Space(S), [0.0,1.0])
 
 Space(d::ComplexPlane) = AffineSpace(d)
 
