@@ -43,7 +43,7 @@ import SpecialFunctions: airy, besselh, erfcx, dawson, erf, erfi,
 import DualNumbers: Dual, realpart, epsilon, dual
 import FillArrays: AbstractFill
 
-export cauchymatrix, rhmatrix, rhsolve, ℂ
+export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes
 
 include("LogNumber.jl")
 
@@ -384,6 +384,15 @@ function rh_sie_solve(G::MatrixFun, n)
     cfs = rhmatrix(G, n) \ (collocationvalues(G-I, n))
     U = hcat([Fun(sp, cfs[:,J]) for J=1:size(G,2)]...)
 end
+
+struct RHProblem{GTyp,CM,RHMTyp}
+    G::GTyp
+    C₋::CM
+    RP::RHMTyp
+end
+
+# function RHProblem(G)
+#     RHProblem(G,
 
 rhsolve(g::ScalarFun, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
 function rhsolve(G::MatrixFun, n)

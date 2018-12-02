@@ -1,4 +1,4 @@
- using ApproxFun, SingularIntegralEquations, RiemannHilbert, Plots
+using ApproxFun, SingularIntegralEquations, RiemannHilbert, Plots
 
 
 struct ReflectionCoefficient{VM, VP} <: Function
@@ -44,27 +44,173 @@ end
 tFun(f, d::Space, n) = Fun(d, transform(d,tvalues(f,d,n)))
 
 tFun(f, d, n) = tFun(f, Space(d), n)
+
 V = x -> 0.1sech(x)
 R = ReflectionCoefficient(V)
 @time ρ = tFun(R, -5.0..5, 601)
 plot(abs.(ρ.coefficients); yscale=:log10)
 plot(ρ)
 
-f = Fun(exp)
-F = [f f; f 1.0]
-F(0.1)
+let k = Fun(identity, space(ρ))
+    G = (t,x) -> [1-abs2.(ρ) -conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
+         ρ*exp(2im*k*x+8im*k^3*t)           1.0]
 
-G = [1-abs2.(ρ) -conj.(ρ);
-     ρ           1.0]
-
-
-Φ = transpose(rhsolve(transpose(G), 2*4*200))
+    Gx = (t,x) -> [0 2im*k*conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
+          2im*k*ρ*exp(2im*k*x+8im*k^3*t)           0.0]
+end
 
 
-Φ(100.0im)*[1,1]
+function quickinv(F)
+    A = Array(F)
+    V = values.(pad.(A, maximum(ncoefficients.(A))))
+    Vi = [inv([V[k,j][p] for k=1:2, j=1:2]) for p=1:length(V[1,1])]
+    Fun(Fun([Fun(sp,transform(sp,[Vi[p][k,j] for p=1:length(Vi)])) for k=1:2, j=1:2]), space(F))
+ end
 
-Φ(0.1+eps()im) - Φ(0.1-eps()im)*G(0.1)
+# Φ⁺ = Φ⁻*G
+# Φₓ⁺ - Φₓ⁻*G = Φ⁻*Gₓ
+# Φₓ = ψ*Φ
+# ψ₊ - ψ₋ = Φ⁻*Gₓ*inv(Φ₊)
 
+# U - (G-I)*C₋U = G-I
+#
+
+import RiemannHilbert: fpstieltjesmatrix
+import ApproxFun: transform
+@time Φ = transpose(rhsolve(transpose(G), 2*4*200))
+h = 0.0001
+@time Φ_h = transpose(rhsolve(transpose(G(0.0,h)), 2*4*200))
+
+n = 2*4*200; S₋ = fpstieltjesmatrix(space(U)[1,1], n÷2, n÷2)
+
+(z = 0.1+eps()im; (Φ_h(z)-Φ(z))/h) -
+    (z = 0.1-eps()im; ((Φ_h(z)-Φ(z))/h)*G(0.,0.)(0.1))
+
+
+Φ_h(0.1+eps()im)-Φ_h(0.1-eps()im)*G(0.0,h)(0.1)
+
+(Φ₋*Gx(0,0))(0.1)
+
+
+
+cauchy(Φ₋*Gx(0,0)*quickinv(Φ₊), z)*Φ(z)
+
+(z=0.1+eps()im; cauchy(Φ₋*Gx(0,0)*quickinv(Φ₊), z)*Φ(z)) -
+    (z=0.1-eps()im; cauchy(Φ₋*Gx(0,0)*quickinv(Φ₊), z)*Φ(z))*G(0,0)(0.1) -
+            (Φ₋*Gx(0,0))(0.1)
+
+
+
+
+
+(istieltjes(Φ)/(-2π*im)+Φ₋)(0.1)
+
+Φ₊ = (istieltjes(Φ)*(-2π*im)+Φ₋)
+Φ(0.1-eps()im)
+
+Φ₊(0.1) - Φ₋(0.1)
+
+
+
+
+
+Φ(0.1+eps()*im) - Φ(0.1-eps()*im)
+
+
+
+
+I+stieltjes(istieltjes(Φ),0.1+eps()*im) - Φ(0.1+eps()*im)
+
+
+
+I+stieltjes(istieltjes(Φ),0.1-eps()*im) - Φ(0.1-eps()*im)
+stieltjes(istieltjes(Φ),0.1+eps()*im)-stieltjes(istieltjes(Φ),0.1-eps()*im)
+
+
+
+istieltjes(Φ)(0.1)*(-2π*im)
+
+istieltjes(Φ)(0.1)
+
+Φ₋(0.1) - Φ(0.1-eps()*im)
+
+
+U(0.1)/(-2π*im)
+
+Fun(I+[Fun(space(U)[k,j], ApproxFun.transform(space(U)[k,j], S₋*U[k,j].coefficients)) for k=1:2,j=1:2]) |> space
+
+Φ₋(0.1)
+Φ(0.1-eps()im)
+
+V(0.1
+
+
+Φ(0.1+eps()im) - Φ(0.1-eps()im)*G(0,0)(0.1)
+
+istieltjes(Φ)(0.1)*(-2π*im) - (Φ(0.1+eps()im) - Φ(0.1-eps()im))
+
+G⁻¹(0.1) - inv(G(0,0)(0.1))
+
+G⁻¹(0.1)*Φ(0.1-eps()im) - Φ(0.1+eps()im)
+
+
+U = istieltjes(Φ)
+Φ₋ =  Fun(Fun(I+[Fun(space(U)[k,j], ApproxFun.transform(space(U)[k,j], S₋*U[k,j].coefficients)) for k=1:2,j=1:2]),
+            ApproxFun.ArraySpace(Chebyshev(domain(ρ)), 2, 2))
+
+domain(ρ)
+Φ₋⁻¹ = quickinv(Φ₋)
+G⁻¹ = quickinv(G)
+
+z = 190000.0im; 2im*(z*[1,1]'cauchy(Φ₋*Gx(0,0)*quickinv(Φ₊), z)*Φ(z))[1]
+
+cauchy(
+
+V(0.0)
+sech(0.0)
+
+space(Gx)
+
+inv.(G)
+
+G[1,1]*Φ₋⁻¹[1,1]
+
+ncoefficients(G[1,1])
+ncoefficients(Φ₋⁻¹)
+
+
+space(Φ₋⁻¹)
+
+M = [Fun(sp,transform(sp,[Vi[p][k,j] for p=1:length(Vi)])) for k=1:2, j=1:2]
+k=j=1;Fun(sp,transform(sp,[Vi[p][k,j] for p=1:length(Vi)])) |> typeof
+typeof(sp)
+ϕ₋⁻¹(0.1) - inv(Φ(0.1-eps()im))
+
+S₋*U[1,1].coefficients
+
+inv.(Φ₋)
+
+@profiler stieltjes(U,0.1+eps()im)
+
+Φ(0.1-eps()*im)
+
+
+U = istieltjes(Φ)
+@time Φ(0.1⁺)
+@profiler stieltjes(U,0.1+0.1im)
+
+Fun(x -> Φ((x)⁺), domain(ρ), 20)
+
+ncoefficients(ρ)
+
+(I+stieltjes(U,1+im)) - Φ(1+im)
+
+([1 1]*Φ(100.0im))[1]
+
+norm(Φ(0.1+eps()im) - Φ(0.1-eps()im)*G(0.1))
+
+
+hilbert(
 
 D^2 + Fun(V, -10..10)
 
