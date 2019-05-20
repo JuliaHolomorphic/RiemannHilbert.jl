@@ -1,6 +1,6 @@
 module RiemannHilbert
 using Base, ApproxFun, SingularIntegralEquations, DualNumbers, LinearAlgebra,
-        SpecialFunctions, FillArrays, SparseArrays, DomainSets, FastTransforms
+        SpecialFunctions, FillArrays, DomainSets, FastTransforms, SparseArrays
 
 
 import DomainSets: UnionDomain, TypedEndpointsInterval
@@ -9,10 +9,10 @@ import FastTransforms: ichebyshevtransform!
 
 
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ
-import ApproxFun: mobius, pieces, npieces, piece, BlockInterlacer, interlacer, pieces_npoints,
-                    ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun
-import ApproxFun: PolynomialSpace, recA, recB, recC, IntervalOrSegmentDomain, IntervalOrSegment
-import ApproxFun: dimension, evaluate, prectype, cfstype, Space, SumSpace, spacescompatible
+import ApproxFunBase: mobius, pieces, npieces, piece, BlockInterlacer, interlacer, pieces_npoints,
+                    ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun,
+                    dimension, evaluate, prectype, cfstype, Space, SumSpace, spacescompatible
+import ApproxFunOrthogonalPolynomials: PolynomialSpace, recA, recB, recC, IntervalOrSegmentDomain, IntervalOrSegment
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
                 >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
@@ -43,7 +43,7 @@ import SpecialFunctions: airy, besselh, erfcx, dawson, erf, erfi,
 import DualNumbers: Dual, realpart, epsilon, dual
 import FillArrays: AbstractFill
 
-export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes
+export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes, KdV
 
 include("LogNumber.jl")
 
@@ -326,12 +326,8 @@ function fpstieltjesmatrix(sp::ArraySpace, ns::AbstractArray{Int}, ms::AbstractA
     C
 end
 
-
-
 fpstieltjesmatrix(sp::ArraySpace, n::Int, m::Int) =
     fpstieltjesmatrix(sp, reshape(pieces_npoints(sp, n), size(sp)), reshape(pieces_npoints(sp, m), size(sp)))
-
-
 
 
 cauchymatrix(x...) = stieltjesmatrix(x...)/(-2π*im)
@@ -341,11 +337,7 @@ function fpcauchymatrix(x...)
     C
 end
 
-
-
 ## riemannhilbert
-
-
 function multiplicationmatrix(G, n)
     N, M = size(G)
     @assert N == M
@@ -439,6 +431,8 @@ end
 *(z::Fun{<:AffineSpace}, φ::Fun{<:ConstantSpace}) = Fun(space(z),Number(φ)*coefficients(z))
 *(z::Fun{<:AffineSpace}, Φ::Fun{<:SumSpace}) = mapreduce(f -> z*f, +, components(Φ))
 *(z::Fun{<:AffineSpace}, Φ::Fun{<:ArraySpace}) = Fun(z.*Array(Φ))
+
+include("KdV.jl")
 
 
 

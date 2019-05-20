@@ -1,8 +1,8 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, LinearAlgebra, FastTransforms, SpecialFunctions, Test
-    import ApproxFun: ArraySpace, pieces
-    import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedrightendpoint, finitepart, fpcauchymatrix
-    import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻, istieltjes
-    import SingularIntegralEquations.HypergeometricFunctions: speciallog
+import ApproxFunBase: ArraySpace, pieces, dotu, interlace
+import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedrightendpoint, finitepart, fpcauchymatrix
+import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻, istieltjes
+import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
 
 @testset "RiemannDual" begin
@@ -50,7 +50,6 @@ end
     end
 end
 
-
 @testset "Directed and RiemannDual" begin
     @test undirected(Directed{false}(RiemannDual(0,-1))) == 0
 
@@ -85,25 +84,25 @@ end
     d = Segment(im,2im)
 
     fpstieltjesmatrix!(C, space(f), d)
-    c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+    c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
     @test c(1.5im) ≈ stieltjes(f,1.5im)
 
     d = Segment(-1,-1+im)
     fpstieltjesmatrix!(C, space(f), d)
     @test norm(C) ≤ 100
-    c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+    c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
     @test c(-1+0.5im) ≈ stieltjes(f,-1+0.5im)
 
     d = Segment(1,1+im)
     fpstieltjesmatrix!(C, space(f), d)
     @test norm(C) ≤ 200
-    c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+    c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
     @test c(1+0.5im) ≈ stieltjes(f,1+0.5im)
 
     d = ChebyshevInterval()
     fpstieltjesmatrix!(C, space(f), d)
     @test norm(C) ≤ 200
-    c = Fun(d, ApproxFun.chebyshevtransform(C*coefficients(f); kind=2))
+    c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
     @test c(0.5) ≈ stieltjes(f,0.5⁻)
 
 
@@ -130,106 +129,115 @@ end
 end
 
 @testset "Two interval" begin
-    sp = Legendre(-1 .. 0) ⊕ Legendre(0 .. 1)
-    f = Fun(x->exp(-40(x-0.1)^2), sp)
-    v = components(f)
-    ns = ncoefficients.(v)
-    C = fpstieltjesmatrix(space(f), ns, ns)
-    @test norm(C) ≤ 200
+    @testset "-1..0 and 0..1" begin
+        sp = Legendre(-1 .. 0) ⊕ Legendre(0 .. 1)
+        f = Fun(x->exp(-40(x-0.1)^2), sp)
+        v = components(f)
+        ns = ncoefficients.(v)
+        C = fpstieltjesmatrix(space(f), ns, ns)
+        @test norm(C) ≤ 200
 
-    c_vals = C*coefficients(f)
-    pts = RiemannHilbert.collocationpoints(space(f), ns)
+        c_vals = C*coefficients(f)
+        pts = RiemannHilbert.collocationpoints(space(f), ns)
 
-    @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,-im))))
-    @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,exp(-0.1im)))))
-    @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
-    @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
-    @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
+        @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,-im))))
+        @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,exp(-0.1im)))))
+        @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
+        @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
 
-    @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
-    @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-    @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
+        @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
+        @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
 
-    h =0.00001
-    @test stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0-eps()*im))
+        h =0.00001
+        @test stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0-eps()*im))
 
-    @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
-        stieltjes(v[1], -0.00000000001im)+stieltjes(v[2], -0.00000000001im)
-
-
-    @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
-        stieltjes(f, -0.00000000001im)
-
-    @test c_vals[1] ≈ stieltjes(f, -0.0000000001im)
-    @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
-
-    @test finitepart(stieltjes(f, RiemannDual(0.0,-im))) ≈ finitepart(stieltjes(v[1], RiemannDual(0.0,-im))+stieltjes(v[2], RiemannDual(0.0,-im)))
+        @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
+            stieltjes(v[1], -0.00000000001im)+stieltjes(v[2], -0.00000000001im)
 
 
-    C11 = fpstieltjesmatrix(space(v[1]), ncoefficients(v[1]), ncoefficients(v[1]))
-    C12 = fpstieltjesmatrix(space(v[2]), domain(v[1]), ncoefficients(v[1]), ncoefficients(v[2]))
+        @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
+            stieltjes(f, -0.00000000001im)
 
-    @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))) ≈ (C11*coefficients(v[1]))[1]
-    @test finitepart(stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈ dotu(stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), finitepart),
-                coefficients(v[2]))
+        @test c_vals[1] ≈ stieltjes(f, -0.0000000001im)
+        @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
 
-    @test C12[1,:] ≈ stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), finitepart)
-
-    @test finitepart(stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈ (C12*coefficients(v[2]))[1]
-    @test C[1,:] ≈ ApproxFun.interlace(C11[1,:], C12[1,:])
-
-    sp = Legendre(Segment(0 , -1)) ⊕ Legendre(0 .. 1)
-
-    f = Fun(x->sign(x)*exp(-40(x-0.1)^2), sp)
-    v = components(f)
-    ns = ncoefficients.(v)
-    C = fpstieltjesmatrix(space(f), ns, ns)
-    @test norm(C) ≤ 200
-
-    @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
-    @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
-    @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(0.0,+im)))
-    @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
-    @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-    @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test finitepart(stieltjes(f, RiemannDual(0.0,-im))) ≈ 
+            finitepart(stieltjes(v[1], RiemannDual(0.0,-im))+stieltjes(v[2], RiemannDual(0.0,-im)))
 
 
-    h =0.00001
-    @test stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0+eps()*im))
-    @test stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0-eps()*im))
+        C11 = fpstieltjesmatrix(space(v[1]), ncoefficients(v[1]), ncoefficients(v[1]))
+        C12 = fpstieltjesmatrix(space(v[2]), domain(v[1]), ncoefficients(v[1]), ncoefficients(v[2]))
 
-    @test stieltjes(v[2], RiemannDual(0.0,-1.0))(h) ≈ stieltjes(v[2], -h) atol=1E-3
+        @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))) ≈ (C11*coefficients(v[1]))[1]
+        @test finitepart(stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈ dotu(stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), finitepart),
+                    coefficients(v[2]))
 
-    @test stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))(h) ≈ stieltjes(v[1], -h-eps()*im) atol=1E-3
+        @test C12[1,:] ≈ stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), finitepart)
+
+        @test finitepart(stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈ (C12*coefficients(v[2]))[1]
+        @test C[1,:] ≈ interlace(C11[1,:], C12[1,:])
+    end
+
+    @testset "0..1 and 0..1" begin
+        sp = Legendre(Segment(0 , -1)) ⊕ Legendre(0 .. 1)
+
+        f = Fun(x->sign(x)*exp(-40(x-0.1)^2), sp)
+        v = components(f)
+        ns = ncoefficients.(v)
+        C = fpstieltjesmatrix(space(f), ns, ns)
+        @test norm(C) ≤ 200
+        c_vals = C*coefficients(f)
+        pts = RiemannHilbert.collocationpoints(space(f), ns)
+
+        @test stieltjes(f,-1-eps()) ≈ stieltjes(f,RiemannDual(-1.0,-1.0)).c
+        @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
+        @test c_vals[2:ns[1]-1] ≈ stieltjes.(f,pts[2:ns[1]-1]⁻)
+        @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(0.0,+im)))
+        @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
+        @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
+        @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
 
 
-    @test finitepart(stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
-        stieltjes(v[1], -0.00000000001im)+stieltjes(v[2], -0.00000000001im)
+        h =0.00001
+        @test stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0+eps()*im))
+        @test stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0-eps()*im))
+
+        @test stieltjes(v[2], RiemannDual(0.0,-1.0))(h) ≈ stieltjes(v[2], -h) atol=1E-3
+
+        @test stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))(h) ≈ stieltjes(v[1], -h-eps()*im) atol=1E-3
 
 
-    @test finitepart(stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
-        stieltjes(f, -0.00000000001im)
-
-    @test c_vals[ns[1]] ≈ stieltjes(f, +0.0000000001im)
-    @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
+        @test finitepart(stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
+            stieltjes(v[1], -0.00000000001im)+stieltjes(v[2], -0.00000000001im)
 
 
-    sp = Legendre(-1 .. 0) ⊕ Legendre(0 .. 1)
-    f = Fun(x->exp(-40(x-0.1)^2), sp)
-    v = components(f)
-    ns = ncoefficients.(v)
-    C = fpstieltjesmatrix(space(f), ns, ns)
-    @test norm(C) ≤ 200
+        @test finitepart(stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
+            stieltjes(f, -0.00000000001im)
 
-    c_vals = C*coefficients(f)
-    pts = RiemannHilbert.collocationpoints(space(f), ns)
+        @test c_vals[ns[1]] ≈ stieltjes(f, +0.0000000001im)
+        @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
+    end
 
-    @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
-    @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
-    @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
-    @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
-    @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-    @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+    @testset "-1..0 and 0..1" begin
+        sp = Legendre(-1 .. 0) ⊕ Legendre(0 .. 1)
+        f = Fun(x->exp(-40(x-0.1)^2), sp)
+        v = components(f)
+        ns = ncoefficients.(v)
+        C = fpstieltjesmatrix(space(f), ns, ns)
+        @test norm(C) ≤ 200
+
+        c_vals = C*coefficients(f)
+        pts = RiemannHilbert.collocationpoints(space(f), ns)
+
+        @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
+        @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
+        @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
+        @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
+        @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+    end
 end
 
 @testset "ArraySpace" begin
@@ -288,183 +296,180 @@ end
 @testset "rhsolve" begin
     sp = Legendre()
     g = 1-0.3Fun(x->exp(-40x^2), sp)
-
     n = 2ncoefficients(g)
-    g = pad(g,n)
-    C₋ = fpcauchymatrix(sp, n, n)
-    pts = RiemannHilbert.collocationpoints(sp, n)
-    @test C₋[2:end-1,:]*coefficients(g) ≈ cauchy.(g, pts[2:end-1]⁻)
     g_v = RiemannHilbert.collocationvalues(g-1, n)
-    @test g_v ≈ g.(pts).-1
-    G = Diagonal(g_v)
-
-    @test G*g_v ≈ (g.(pts) .- 1).^2
-
-    E = RiemannHilbert.evaluationmatrix(sp, pts, length(pts))
-    @test E*coefficients(g) ≈ g.(pts)
-
-    @test (g.(pts).-1).*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-    @test G*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-
-
-
-    L = E - G*C₋
-    @test L*coefficients(g) ≈ g.(pts) - (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-
-    @test L == rhmatrix(g,n)
-
     u = Fun(sp, rhmatrix(g,n) \ g_v)
-    φ = z -> 1 + cauchy(u,z)
-    @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+
+    @testset "-1 .. 1" begin
+        n = 2ncoefficients(g)
+        g = pad(g,n)
+        C₋ = fpcauchymatrix(sp, n, n)
+        pts = RiemannHilbert.collocationpoints(sp, n)
+        @test C₋[2:end-1,:]*coefficients(g) ≈ cauchy.(g, pts[2:end-1]⁻)
+        g_v = RiemannHilbert.collocationvalues(g-1, n)
+        @test g_v ≈ g.(pts).-1
+        G = Diagonal(g_v)
+
+        @test G*g_v ≈ (g.(pts) .- 1).^2
+
+        E = RiemannHilbert.evaluationmatrix(sp, pts, length(pts))
+        @test E*coefficients(g) ≈ g.(pts)
+
+        @test (g.(pts).-1).*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
+        @test G*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
+
+        L = E - G*C₋
+        @test L*coefficients(g) ≈ g.(pts) - (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
+
+        @test L == rhmatrix(g,n)
+
+        
+        φ = z -> 1 + cauchy(u,z)
+        @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
 
 
-    @test 1+cauchy(u)(0.1+0.2im) ≈ φ(0.1+0.2im)
-    @test (1+cauchy(u) )(0.1+0.2im) ≈ φ(0.1+0.2im)
-    @test (1+cauchy(u) )(0.1⁻) ≈ φ(0.1⁻)
+        @test 1+cauchy(u)(0.1+0.2im) ≈ φ(0.1+0.2im)
+        @test (1+cauchy(u) )(0.1+0.2im) ≈ φ(0.1+0.2im)
+        @test (1+cauchy(u) )(0.1⁻) ≈ φ(0.1⁻)
+    end
 
+    @testset "-1 .. 0 and 0 .. 1" begin
+        sp = Legendre(-1 .. 0) ∪ Legendre(0 .. 1)
+        u_1 = u
+        u_ex = Fun(x->u_1(x), sp)
+        g_1 = 1-0.3Fun(x->exp(-40x^2), Legendre())
 
-    sp = Legendre(-1 .. 0) ∪ Legendre(0 .. 1)
-    u_1 = u
-    u_ex = Fun(x->u_1(x), sp)
-    g_1 = 1-0.3Fun(x->exp(-40x^2), Legendre())
+        g = 1-0.3Fun(x->exp(-40x^2), sp)
 
-    g = 1-0.3Fun(x->exp(-40x^2), sp)
+        n = 2ncoefficients(g)
+        g = pad(g,n)
+        u_ex = pad(u_ex,n)
+        @test (1+cauchy(u_ex,0.1⁺)) ≈ g(0.1)*(1+cauchy(u_ex,0.1⁻))
 
-    n = 2ncoefficients(g)
-    g = pad(g,n)
-    u_ex = pad(u_ex,n)
-    @test (1+cauchy(u_ex,0.1⁺)) ≈ g(0.1)*(1+cauchy(u_ex,0.1⁻))
+        C₋ = fpcauchymatrix(sp, n, n)
+        pts = RiemannHilbert.collocationpoints(sp, n)
 
-    C₋ = fpcauchymatrix(sp, n, n)
-    pts = RiemannHilbert.collocationpoints(sp, n)
+        @test transpose(C₋[1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[1]-eps()im)
+        @test transpose(C₋[5,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[5]-eps()im)
+        @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, 0.0-eps()im)
+        @test transpose(C₋[end-1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[end-1]-eps()im)
+        @test transpose(C₋[n÷2,:])*coefficients(u_ex) ≈ cauchy(u_ex,-1.0-eps())
+        @test transpose(C₋[(n÷2)+1,:])*coefficients(u_ex) ≈ cauchy(u_ex,1.0+eps())
 
-    @test transpose(C₋[1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[1]-eps()im)
-    @test transpose(C₋[5,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[5]-eps()im)
-    @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, 0.0-eps()im)
-    @test transpose(C₋[end-1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[end-1]-eps()im)
-    @test transpose(C₋[n÷2,:])*coefficients(u_ex) ≈ cauchy(u_ex,-1.0-eps())
-    @test transpose(C₋[(n÷2)+1,:])*coefficients(u_ex) ≈ cauchy(u_ex,1.0+eps())
+        @test C₋*coefficients(u_ex) ≈ cauchy.(u_ex, pts.-eps()im)
+        g_v = RiemannHilbert.collocationvalues(g-1, n)
+        @test g_v ≈ g.(pts).-1
+        G = Diagonal(g_v)
 
+        @test G*g_v ≈ (g.(pts) .- 1).^2
 
-    @test C₋*coefficients(u_ex) ≈ cauchy.(u_ex, pts.-eps()im)
-    g_v = RiemannHilbert.collocationvalues(g-1, n)
-    @test g_v ≈ g.(pts).-1
-    G = Diagonal(g_v)
+        g1 = component(g,2)
+        pts1 = RiemannHilbert.collocationpoints(component(sp,2), n÷2)
+        E1=RiemannHilbert.evaluationmatrix(component(sp,1), length(pts1))
 
-    @test G*g_v ≈ (g.(pts) .- 1).^2
+        @test E1*g1.coefficients ≈ g1.(pts1)
 
+        E = RiemannHilbert.evaluationmatrix(sp, n)
+        @test E*coefficients(g) ≈ g.(pts)
 
-    g1 = component(g,2)
-    pts1 = RiemannHilbert.collocationpoints(component(sp,2), n÷2)
-    E1=RiemannHilbert.evaluationmatrix(component(sp,1), length(pts1))
+        @test (g.(pts).-1).*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
+        @test G*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
 
-    @test E1*g1.coefficients ≈ g1.(pts1)
+        L = E - G*C₋
+        @test L*coefficients(g) ≈ g.(pts) - (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
 
+        @test L == rhmatrix(g,n)
 
-    E = RiemannHilbert.evaluationmatrix(sp, n)
-    @test E*coefficients(g) ≈ g.(pts)
+        u = Fun(sp, rhmatrix(g,n) \ g_v)
+        φ = z -> 1 + cauchy(u,z)
+        @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
 
-    @test (g.(pts).-1).*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-    @test G*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
+        @test 1+cauchy(u)(0.1+0.2im) ≈ φ(0.1+0.2im)
+        @test (1+cauchy(u) )(0.1+0.2im) ≈ φ(0.1+0.2im)
+        @test (1+cauchy(u) )(0.1⁻) ≈ φ(0.1⁻)
 
+        @time φ = rhsolve(g, 2ncoefficients(g))
+        @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+    end
 
+    @testset "0..-1 and 0..1" begin
+        sp = Legendre(Segment(0 , -1)) ∪ Legendre(0 .. 1)
+        g = Fun(x->x ≥ 0 ? 1-0.3exp(-40x^2) : inv(1-0.3exp(-40x^2)), sp)
 
-    L = E - G*C₋
-    @test L*coefficients(g) ≈ g.(pts) - (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
+        u_ex = Fun(x->sign(x)u_1(x), sp)
 
-    @test L == rhmatrix(g,n)
+        n = 2ncoefficients(g)
+        g = pad(g,n)
+        u_ex = pad(u_ex,n)
+        @test (1+cauchy(u_ex,0.1⁺)) ≈ g(0.1)*(1+cauchy(u_ex,0.1⁻))
 
-    u = Fun(sp, rhmatrix(g,n) \ g_v)
-    φ = z -> 1 + cauchy(u,z)
-    @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+        C₋ = fpcauchymatrix(sp, n, n)
+        pts = RiemannHilbert.collocationpoints(sp, n)
 
+        @test transpose(C₋[1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[1]+eps()im)
+        @test transpose(C₋[5,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[5]+eps()im)
+        @test transpose(C₋[n÷2,:])*coefficients(u_ex) ≈ cauchy(u_ex,0.0+eps()im)
+        @test transpose(C₋[(n÷2)+1,:])*coefficients(u_ex) ≈ cauchy(u_ex,1.0+eps())
+        @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, pts[end]-eps()im)
+        @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, 0.0-eps()im)
+        @test transpose(C₋[end-1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[end-1]-eps()im)
 
-    @test 1+cauchy(u)(0.1+0.2im) ≈ φ(0.1+0.2im)
-    @test (1+cauchy(u) )(0.1+0.2im) ≈ φ(0.1+0.2im)
-    @test (1+cauchy(u) )(0.1⁻) ≈ φ(0.1⁻)
+        @test C₋*coefficients(u_ex) ≈ [cauchy.(u_ex, pts[1:n÷2].+eps()im); cauchy.(u_ex, pts[(n÷2)+1:end].-eps()im)]
+        g_v = RiemannHilbert.collocationvalues(g-1, n)
 
+        g1 = component(g,1)
+        pts1 = RiemannHilbert.collocationpoints(component(sp,1), n÷2)
+        E1=RiemannHilbert.evaluationmatrix(component(sp,1), length(pts1))
 
-    @time φ = rhsolve(g, 2ncoefficients(g))
-    @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+        @test E1*g1.coefficients ≈ g1.(pts1)
 
-    sp = Legendre(Segment(0 , -1)) ∪ Legendre(0 .. 1)
-    g = Fun(x->x ≥ 0 ? 1-0.3exp(-40x^2) : inv(1-0.3exp(-40x^2)), sp)
+        g2 = component(g,2)
+        pts2 = RiemannHilbert.collocationpoints(component(sp,2), n÷2)
 
-    u_ex = Fun(x->sign(x)u_1(x), sp)
+        @test g_v ≈ [g1.(pts1).-1; g2.(pts2).-1]
+        G = Diagonal(g_v)
 
+        @test g1.(pts1) ≈ g.(pts1)
+        @test_broken g2.(pts2) ≈ g.(pts2) # evaluation at 0
+        @test_broken G*g_v ≈ (g.(pts) .- 1).^2
 
-    n = 2ncoefficients(g)
-    g = pad(g,n)
-    u_ex = pad(u_ex,n)
-    @test (1+cauchy(u_ex,0.1⁺)) ≈ g(0.1)*(1+cauchy(u_ex,0.1⁻))
+        E = RiemannHilbert.evaluationmatrix(sp, n)
+        @test E[1:end-1,:]*coefficients(g) ≈ g.(pts[1:end-1])
+        @test transpose(E[end,:])*coefficients(g) ≈ component(g,2)(0.0)
 
-    C₋ = fpcauchymatrix(sp, n, n)
-    pts = RiemannHilbert.collocationpoints(sp, n)
+        @test (g2.(pts2).-1).*(C₋[(n÷2)+1:end,:]*coefficients(u_ex)) ≈
+            (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)
+        @test (g.(pts1).-1).*(C₋[1:n÷2,:]*coefficients(u_ex)) ≈
+            (g.(pts1).-1).*cauchy.(u_ex, pts1.+0.000000001im)
+        @test (g.(pts2).-1).*(C₋[(n÷2)+1:end,:]*coefficients(u_ex)) ≈
+            (g.(pts2).-1).*cauchy.(u_ex, pts2.-0.000000001im)
 
-    @test transpose(C₋[1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[1]+eps()im)
-    @test transpose(C₋[5,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[5]+eps()im)
-    @test transpose(C₋[n÷2,:])*coefficients(u_ex) ≈ cauchy(u_ex,0.0+eps()im)
-    @test transpose(C₋[(n÷2)+1,:])*coefficients(u_ex) ≈ cauchy(u_ex,1.0+eps())
-    @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, pts[end]-eps()im)
-    @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, 0.0-eps()im)
-    @test transpose(C₋[end-1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[end-1]-eps()im)
+        u_ex1,u_ex2 = components(u_ex)
+        @test (C₋*coefficients(u_ex))[ncoefficients(u_ex1)+1:end] ≈ cauchy.(u_ex, pts2.-eps()im)
+        @test G*C₋*coefficients(u_ex) ≈ [(g1.(pts1).-1).*cauchy.(u_ex, pts1.+eps()im);
+                                         (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)]
 
+        L = E - G*C₋
+        @test L*coefficients(u_ex) ≈ [u_ex1.(pts1) - (g1.(pts1).-1).*cauchy.(u_ex, pts1.+eps()im);
+                                        u_ex2.(pts2) - (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)]
 
+        @test L == rhmatrix(g,n)
 
-    @test C₋*coefficients(u_ex) ≈ [cauchy.(u_ex, pts[1:n÷2].+eps()im); cauchy.(u_ex, pts[(n÷2)+1:end].-eps()im)]
-    g_v = RiemannHilbert.collocationvalues(g-1, n)
+        u = Fun(sp, rhmatrix(g,n) \ g_v)
+        φ1 = z -> 1 + cauchy(u,z)
+        @test φ1(0.1⁺)  ≈ g(0.1)φ1(0.1⁻)
+        @test φ1(-0.1⁺)  ≈ g(-0.1)φ1(-0.1⁻)
 
-    g1 = component(g,1)
-    pts1 = RiemannHilbert.collocationpoints(component(sp,1), n÷2)
-    E1=RiemannHilbert.evaluationmatrix(component(sp,1), length(pts1))
+        @test 1+cauchy(u)(0.1+0.2im) ≈ φ1(0.1+0.2im)
+        @test (1+cauchy(u) )(0.1+0.2im) ≈ φ1(0.1+0.2im)
+        @test (1+cauchy(u) )(0.1⁻) ≈ φ1(0.1⁻)
+        @test (1+cauchy(u) )(0.1⁺) ≈ φ1(0.1⁺)
+        @test (1+cauchy(u) )(-0.1⁻) ≈ φ1(-0.1⁻)
+        @test (1+cauchy(u) )(-0.1⁺) ≈ φ1(-0.1⁺)
 
-    @test E1*g1.coefficients ≈ g1.(pts1)
-
-    g2 = component(g,2)
-    pts2 = RiemannHilbert.collocationpoints(component(sp,2), n÷2)
-
-    @test g_v ≈ [g1.(pts1).-1; g2.(pts2).-1]
-    G = Diagonal(g_v)
-
-    @test G*g_v ≈ (g.(pts) .- 1).^2
-
-
-    E = RiemannHilbert.evaluationmatrix(sp, n)
-    @test E[1:end-1,:]*coefficients(g) ≈ g.(pts[1:end-1])
-    @test transpose(E[end,:])*coefficients(g) ≈ component(g,2)(0.0)
-
-    @test (g2.(pts2).-1).*(C₋[(n÷2)+1:end,:]*coefficients(u_ex)) ≈
-        (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)
-    @test (g.(pts1).-1).*(C₋[1:n÷2,:]*coefficients(u_ex)) ≈
-        (g.(pts1).-1).*cauchy.(u_ex, pts1.+0.000000001im)
-    @test (g.(pts2).-1).*(C₋[(n÷2)+1:end,:]*coefficients(u_ex)) ≈
-        (g.(pts2).-1).*cauchy.(u_ex, pts2.-0.000000001im)
-    @test G*C₋*coefficients(u_ex) ≈ [u_ex1.(pts1) - (g1.(pts1).-1).*cauchy.(u_ex, pts1.+eps()im);
-                                    u_ex2.(pts2) - (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)]
-
-    u_ex1,u_ex2 = components(u_ex)
-    L = E - G*C₋
-    @test L*coefficients(u_ex) ≈ [u_ex1.(pts1) - (g1.(pts1).-1).*cauchy.(u_ex, pts1.+eps()im);
-                                    u_ex2.(pts2) - (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)]
-
-    @test L == rhmatrix(g,n)
-
-    u = Fun(sp, rhmatrix(g,n) \ g_v)
-    φ1 = z -> 1 + cauchy(u,z)
-    @test φ1(0.1⁺)  ≈ g(0.1)φ1(0.1⁻)
-    @test φ1(-0.1⁺)  ≈ g(-0.1)φ1(-0.1⁻)
-
-
-    @test 1+cauchy(u)(0.1+0.2im) ≈ φ1(0.1+0.2im)
-    @test (1+cauchy(u) )(0.1+0.2im) ≈ φ1(0.1+0.2im)
-    @test (1+cauchy(u) )(0.1⁻) ≈ φ1(0.1⁻)
-    @test (1+cauchy(u) )(0.1⁺) ≈ φ1(0.1⁺)
-    @test (1+cauchy(u) )(-0.1⁻) ≈ φ1(-0.1⁻)
-    @test (1+cauchy(u) )(-0.1⁺) ≈ φ1(-0.1⁺)
-
-
-    @time φ = rhsolve(g, 2ncoefficients(g))
-    @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+        @time φ = rhsolve(g, 2ncoefficients(g))
+        @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+    end
 end
 
 
@@ -537,7 +542,6 @@ end
     L = rhmatrix(G, n)
     rhs = RiemannHilbert.collocationvalues((g-I)[:,1], n)
     @test rhs[end] ≈ 0.1
-    L*coefficients(Ũ1) - rhs |>norm
 
     Φ = rhsolve(G,n)
 
@@ -583,11 +587,8 @@ end
 
     Φ = transpose(rhsolve(transpose(G), 2*4*100))
 
-
     s=exp(im*π/6)
-        @test Φ((s)⁻)*G(s) ≈ Φ((s)⁺)
-
-
+    @test Φ((s)⁻)*G(s) ≈ Φ((s)⁺)
     @test map(g->first(components(g)[1]), G)*map(g->first(components(g)[2]), G)*
         map(g->first(components(g)[3]), G)*map(g->first(components(g)[4]), G) ≈ Matrix(I,2,2)
 
@@ -596,14 +597,9 @@ end
         @test RiemannHilbert.rhmatrix(G, 32) ≈ RiemannHilbert.rhmatrix(G, 32)
     end
 
-
     @test RiemannHilbert.rhmatrix(transpose(G), 900) ≈ RiemannHilbert.rhmatrix(transpose(G), 900)
-
-
-
     U = RiemannHilbert.rh_sie_solve(transpose(G), 2*4*100)
     @test -0.36706155154807807 ≈ sum(U[1,2])/(-π*im)
-
 
     G̃ = Fun( z -> if angle(z) ≈ π/6
                         [1 0; s₁*exp(8im/3*z^3) 1]
@@ -619,9 +615,7 @@ end
     Ũ = RiemannHilbert.rh_sie_solve(transpose(G̃), 2*4*100)
 
     @test rhmatrix(transpose(G), 2*4*100) ≈ rhmatrix(transpose(G̃), 2*4*100)
-
     @test -0.36706155154807807 ≈ sum(Ũ[1,2])/(-π*im)
-
 
     V = SingularIntegralEquations.istieltjes(Φ)
     x = Fun(domain(V))

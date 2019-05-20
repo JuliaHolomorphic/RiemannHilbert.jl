@@ -1,71 +1,23 @@
-using ApproxFun, SingularIntegralEquations, RiemannHilbert, Plots
+using ApproxFun, SingularIntegralEquations, RiemannHilbert, Test
+using RiemannHilbert.KdV
 
-
-struct ReflectionCoefficient{VM, VP} <: Function
-    V₋::VM
-    V₊::VP
-end
-
-function ReflectionCoefficient(V, a=-50.0, x₀=0.0, b=50.0)
-    d₋, d₊ = a .. x₀ , x₀ .. b
-    V₋,V₊ = Fun(V, d₋), Fun(V, d₊)
-    ReflectionCoefficient{typeof(V₋),typeof(V₊)}(V₋,V₊)
-end
-
-# ψ'' + (V(x) + k^2) ψ = 0
-function (R::ReflectionCoefficient)(k)
-    k == 0 && return -one(ComplexF64)
-
-    a,x₀ = endpoints(domain(R.V₋))
-    b = rightendpoint(domain(R.V₊))
-    D = Derivative()
-    V₋,V₊ = R.V₋, R.V₊
-    ψ = [ivp(); D^2  + (V₋ + k^2)] \ [exp(im*k*a), im*k*(exp(im*k*a)), 0.0]
-
-    F = qr([rdirichlet(space(V₊)); rneumann(); D^2  + (V₊ + k^2)])
-    ϕ₊ = F \ [exp(im*k*b), im*k*(exp(im*k*b)), 0.0]
-    ϕ₋ = F \ [exp(-im*k*b), -im*k*(exp(-im*k*b)), 0.0]
-
-    a,b = [ϕ₊(x₀)   ϕ₋(x₀);
-           ϕ₊'(x₀)  ϕ₋'(x₀)] \ [ψ(x₀); ψ'(x₀)]
-    b/a
-end
-
-# use multiple threads since reflection coefficient is slow
-function tvalues(f, d, n)
-    p = points(d, n)
-    F = similar(p, ComplexF64)
-    Threads.@threads for k=1:length(p)
-        F[k] = R(p[k])
-    end
-    F
-end
-
-tFun(f, d::Space, n) = Fun(d, transform(d,tvalues(f,d,n)))
-
-tFun(f, d, n) = tFun(f, Space(d), n)
 
 V = x -> 0.1sech(x)
 R = ReflectionCoefficient(V)
-@time ρ = tFun(R, -5.0..5, 601)
+@time ρ = Fun(R, -5.0..5, 601)
+
+@which R(0.1)
+
+using Plots
 plot(abs.(ρ.coefficients); yscale=:log10)
 plot(ρ)
 
-let k = Fun(identity, space(ρ))
-    G = (t,x) -> [1-abs2.(ρ) -conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
-         ρ*exp(2im*k*x+8im*k^3*t)           1.0]
+k = Fun(identity, space(ρ))
+G = (t,x) -> [1-abs2.(ρ) -conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
+        ρ*exp(2im*k*x+8im*k^3*t)           1.0]
 
-    Gx = (t,x) -> [0 2im*k*conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
-          2im*k*ρ*exp(2im*k*x+8im*k^3*t)           0.0]
-end
-
-
-function quickinv(F)
-    A = Array(F)
-    V = values.(pad.(A, maximum(ncoefficients.(A))))
-    Vi = [inv([V[k,j][p] for k=1:2, j=1:2]) for p=1:length(V[1,1])]
-    Fun(Fun([Fun(sp,transform(sp,[Vi[p][k,j] for p=1:length(Vi)])) for k=1:2, j=1:2]), space(F))
- end
+Gx = (t,x) -> [0 2im*k*conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
+        2im*k*ρ*exp(2im*k*x+8im*k^3*t)           0.0]
 
 # Φ⁺ = Φ⁻*G
 # Φₓ⁺ - Φₓ⁻*G = Φ⁻*Gₓ
@@ -80,11 +32,8 @@ import ApproxFun: transform
 @time Φ = transpose(rhsolve(transpose(G), 2*4*200))
 h = 0.0001
 @time Φ_h = transpose(rhsolve(transpose(G(0.0,h)), 2*4*200))
-
 n = 2*4*200; S₋ = fpstieltjesmatrix(space(U)[1,1], n÷2, n÷2)
-
-(z = 0.1+eps()im; (Φ_h(z)-Φ(z))/h) -
-    (z = 0.1-eps()im; ((Φ_h(z)-Φ(z))/h)*G(0.,0.)(0.1))
+(z = 0.1+eps()im; (Φ_h(z)-Φ(z))/h) - (z = 0.1-eps()im; ((Φ_h(z)-Φ(z))/h)*G(0.,0.)(0.1))
 
 
 Φ_h(0.1+eps()im)-Φ_h(0.1-eps()im)*G(0.0,h)(0.1)
