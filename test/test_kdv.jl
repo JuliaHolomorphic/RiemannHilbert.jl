@@ -2,19 +2,21 @@ using ApproxFun, SingularIntegralEquations, RiemannHilbert, Test
 using RiemannHilbert.KdV
 
 
-V = x -> 0.1sech(x)
+V = x -> 1.2exp(-x^2)
 R = ReflectionCoefficient(V)
-@time ρ = Fun(R, -5.0..5, 601)
+@test R(0.1) ≈ -0.9651837057639975 + 0.06801873361192057im  # From ISTPackage
+@test R(0.01) ≈ -0.9996431456648749 + 0.0070094571751774535im
+@test R(0.0) ≈ -1.0
+@test R(-0.1) ≈ conj(R(0.1))
 
-@which R(0.1)
-
-using Plots
-plot(abs.(ρ.coefficients); yscale=:log10)
-plot(ρ)
-
+@time ρ = tFun(R, -5.0..5, 300)
+@test ρ(0.1) ≈ R(0.1)
 k = Fun(identity, space(ρ))
 G = (t,x) -> [1-abs2.(ρ) -conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
         ρ*exp(2im*k*x+8im*k^3*t)           1.0]
+
+  
+
 
 Gx = (t,x) -> [0 2im*k*conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
         2im*k*ρ*exp(2im*k*x+8im*k^3*t)           0.0]

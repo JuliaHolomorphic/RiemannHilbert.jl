@@ -8,7 +8,7 @@ struct ReflectionCoefficient{VM, VP} <: Function
     ReflectionCoefficient{VM, VP}(V₋::VM, V₊::VP) where {VM,VP} = new{VM,VP}(V₋, V₊)
 end
 
-function ReflectionCoefficient(V, a=-50.0, x₀=0.0, b=50.0)
+function ReflectionCoefficient(V, a=-6.0, x₀=0.0, b=6.0)
     d₋, d₊ = a .. x₀ , x₀ .. b
     V₋,V₊ = Fun(V, d₋), Fun(V, d₊)
     ReflectionCoefficient{typeof(V₋),typeof(V₊)}(V₋,V₊)
@@ -22,7 +22,7 @@ function (R::ReflectionCoefficient)(k)
     b = rightendpoint(domain(R.V₊))
     D = Derivative()
     V₋,V₊ = R.V₋, R.V₊
-    ψ = [ivp(); D^2  + (V₋ + k^2)] \ [exp(im*k*a), im*k*(exp(im*k*a)), 0.0]
+    ψ = [ivp(); D^2  + (V₋ + k^2)] \ [exp(-im*k*a), -im*k*(exp(-im*k*a)), 0.0]
 
     F = qr([rdirichlet(space(V₊)); rneumann(); D^2  + (V₊ + k^2)])
     ϕ₊ = F \ [exp(im*k*b), im*k*(exp(im*k*b)), 0.0]
@@ -30,7 +30,7 @@ function (R::ReflectionCoefficient)(k)
 
     a,b = [ϕ₊(x₀)   ϕ₋(x₀);
            ϕ₊'(x₀)  ϕ₋'(x₀)] \ [ψ(x₀); ψ'(x₀)]
-    b/a
+    b/a # TODO why conj?
 end
 
 # use multiple threads since reflection coefficient is slow
