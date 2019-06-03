@@ -9,6 +9,31 @@ R = ReflectionCoefficient(V)
 @test R(0.0) ≈ -1.0
 @test R(-0.1) ≈ conj(R(0.1))
 
+k = 1im
+a,x₀ = endpoints(domain(R.V₋))
+b = rightendpoint(domain(R.V₊))
+D = Derivative()
+V₋,V₊ = R.V₋, R.V₊
+
+kk = range(-1,1,length=10) .+ range(0,1,length=10)'*im
+
+ψ = (D,a,x,k) -> begin
+    ψ = [ivp(); D^2  + (V₋ + k^2)] \ [exp(-im*k*a), -im*k*(exp(-im*k*a)), 0.0]
+    ψ(x)
+end
+
+
+
+kk = range(-10,10,length=300)' .+ range(0,5,length=300)*im
+f = ψ.(Ref(D),a,0.0,kk)
+
+portrait(f, PTstepmod)
+
+ψ(D,a,0.0,10im)
+using ComplexPhasePortrait
+portrait(f)
+
+
 @time ρ = tFun(R, -5.0..5, 300)
 @test ρ(0.1) ≈ R(0.1)
 k = Fun(identity, space(ρ))

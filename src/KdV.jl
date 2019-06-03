@@ -28,9 +28,9 @@ function (R::ReflectionCoefficient)(k)
     ϕ₊ = F \ [exp(im*k*b), im*k*(exp(im*k*b)), 0.0]
     ϕ₋ = F \ [exp(-im*k*b), -im*k*(exp(-im*k*b)), 0.0]
 
-    a,b = [ϕ₊(x₀)   ϕ₋(x₀);
-           ϕ₊'(x₀)  ϕ₋'(x₀)] \ [ψ(x₀); ψ'(x₀)]
-    b/a # TODO why conj?
+    a,b = [ϕ₋(x₀) ϕ₊(x₀);
+           ϕ₋'(x₀) ϕ₊'(x₀) ] \ [ψ(x₀); ψ'(x₀)]
+    b/a 
 end
 
 # use multiple threads since reflection coefficient is slow
