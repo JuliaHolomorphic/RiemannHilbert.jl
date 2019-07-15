@@ -395,7 +395,7 @@ end
     @testset "0..-1 and 0..1" begin
         sp = Legendre(Segment(0 , -1)) ∪ Legendre(0 .. 1)
         g = Fun(x->x ≥ 0 ? 1-0.3exp(-40x^2) : inv(1-0.3exp(-40x^2)), sp)
-
+        u_1 = u
         u_ex = Fun(x->sign(x)u_1(x), sp)
 
         n = 2ncoefficients(g)
@@ -469,6 +469,12 @@ end
 
         @time φ = rhsolve(g, 2ncoefficients(g))
         @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+    end
+
+    @testset "Chebyshev g" begin
+        G = Fun(x -> 1 + exp(-30x^2), -1..1)
+        Φ = rhsolve(G, 200)
+        @test Φ(0.1⁺) ≈ G(0.1)Φ(0.1⁻)
     end
 end
 

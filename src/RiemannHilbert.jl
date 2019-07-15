@@ -355,7 +355,7 @@ function multiplicationmatrix(G, n)
 end
 
 function rhmatrix(g::ScalarFun, n)
-    sp = PiecewiseSpace(Legendre.(components(domain(g))))
+    sp = rhspace(g)
     C₋ = fpcauchymatrix(sp, n, n)
     g_v = collocationvalues(g-1, n)
     E = evaluationmatrix(sp, n)
@@ -364,7 +364,7 @@ function rhmatrix(g::ScalarFun, n)
 end
 
 function rhmatrix(g::MatrixFun, n)
-    sp = ArraySpace(PiecewiseSpace(Legendre.(components(domain(g)))), size(g,1))
+    sp = vector_rhspace(g)
     C₋ = fpcauchymatrix(sp, n, n)
     G = multiplicationmatrix(g-I, n)
     E = evaluationmatrix(sp, n)
@@ -372,7 +372,7 @@ function rhmatrix(g::MatrixFun, n)
 end
 
 function rh_sie_solve(G::MatrixFun, n)
-    sp = ArraySpace(PiecewiseSpace(Legendre.(components(domain(G)))), size(G,1))
+    sp = vector_rhspace(G)
     cfs = rhmatrix(G, n) \ (collocationvalues(G-I, n))
     U = hcat([Fun(sp, cfs[:,J]) for J=1:size(G,2)]...)
 end
@@ -386,7 +386,16 @@ end
 # function RHProblem(G)
 #     RHProblem(G,
 
-rhsolve(g::ScalarFun, n) = 1+cauchy(Fun(space(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
+scalar_rhspace(d::AbstractInterval) = Legendre(d)
+scalar_rhspace(d::UnionDomain) = PiecewiseSpace(Legendre.(components(d)))
+array_rhspace(sz, d::Domain) = ArraySpace(scalar_rhspace(d), sz)
+vector_rhspace(sz1, d::Domain) = ArraySpace(scalar_rhspace(d), sz1)
+vector_rhspace(f::Fun) = vector_rhspace(size(f,1), domain(f))
+
+rhspace(g::Fun{<:ArraySpace}) = array_rhspace(size(g), domain(g))
+rhspace(g::Fun) = scalar_rhspace(domain(g))
+
+rhsolve(g::ScalarFun, n) = 1+cauchy(Fun(rhspace(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
 function rhsolve(G::MatrixFun, n)
     U = rh_sie_solve(G, n)
     I+cauchy(U)
