@@ -1,5 +1,6 @@
 name = "RiemannHilbert"
 uuid = "79305c5b-9889-52e9-bdbd-56f883c71fe0"
+version = "0.0.1"
 
 [deps]
 ApproxFun = "28f2ccd6-bb30-5033-b560-165f7b14dc2f"
