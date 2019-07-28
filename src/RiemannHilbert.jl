@@ -236,29 +236,30 @@ evaluationmatrix!(C, sp::ArraySpace) =
 
 evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(undef,n,n), sp)
 
-
+fprightstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedrightendpoint(domain(sp))), finitepart)
+fpleftstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedleftendpoint(domain(sp))), finitepart)
 function fpstieltjesmatrix!(C, sp, d)
     m, n = size(C)
     pts = collocationpoints(d, m)
     if d == domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, Directed{false}(orientedrightendpoint(d)), finitepart)
+        fprightstieltjesmoment!(view(C,1,:), sp)
         for k=2:m-1
             stieltjesmoment!(view(C,k,:), sp, Directed{false}(pts[k]))
         end
-        stieltjesmoment!(view(C,m,:), sp, Directed{false}(orientedleftendpoint(d)), finitepart)
+        fpleftstieltjesmoment!(view(C,m,:), sp)
     elseif leftendpoint(d) ∈ domain(sp) && rightendpoint(d) ∈ domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, orientedrightendpoint(d), finitepart)
+        fprightstieltjesmoment!(view(C,1,:), sp)
         for k=2:m-1
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end
-        stieltjesmoment!(view(C,m,:), sp, orientedleftendpoint(d), finitepart)
+        fpleftstieltjesmoment!(view(C,m,:), sp)
     elseif leftendpoint(d) ∈ domain(sp)
         for k=1:m-1
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end
-        stieltjesmoment!(view(C,m,:), sp, orientedleftendpoint(d), finitepart)
+        fpleftstieltjesmoment!(view(C,m,:), sp)
     elseif rightendpoint(d) ∈ domain(sp)
-        stieltjesmoment!(view(C,1,:), sp, orientedrightendpoint(d), finitepart)
+        fprightstieltjesmoment!(view(C,1,:), sp)
         for k=2:m
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end
