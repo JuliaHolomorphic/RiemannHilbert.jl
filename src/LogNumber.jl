@@ -100,7 +100,8 @@ for OP in (:*, :+, :-, :/)
 end
 
 function inv(z::RiemannDual)
-    realpart(z) == 0 && return RiemannDual(Inf, inv(epsilon(z)))
+    tol = 1E-15
+    abs(realpart(z)) ≤ tol && return RiemannDual(Inf, inv(epsilon(z)))
     RiemannDual(inv(dual(z)))
 end
 
@@ -115,8 +116,9 @@ for f in (:real, :imag, :abs)
 end
 
 function log(z::RiemannDual)
-    @assert realpart(z) == 0 || isinf(realpart(z))
-    LogNumber(realpart(z) == 0 ? 1 : -1, log(abs(epsilon(z))) + im*angle(epsilon(z)))
+    tol = 1E-14
+    abs(realpart(z)) ≤ tol  || abs(realpart(z)) ≥ 1/tol || throw(ArgumentError("Cannot eval at $z"))
+    LogNumber(abs(realpart(z)) ≤ tol ? 1 : -1, log(abs(epsilon(z))) + im*angle(epsilon(z)))
 end
 
 function atanh(z::RiemannDual)

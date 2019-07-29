@@ -1,6 +1,6 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, LinearAlgebra, FastTransforms, SpecialFunctions, Test
 import ApproxFunBase: ArraySpace, pieces, dotu, interlace
-import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedrightendpoint, finitepart, fpcauchymatrix
+import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedleftendpoint, orientedrightendpoint, finitepart, fpcauchymatrix, collocationvalues, collocationpoints
 import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻, istieltjes
 import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
@@ -623,8 +623,111 @@ end
     @test rhmatrix(transpose(G), 2*4*100) ≈ rhmatrix(transpose(G̃), 2*4*100)
     @test -0.36706155154807807 ≈ sum(Ũ[1,2])/(-π*im)
 
-    V = SingularIntegralEquations.istieltjes(Φ)
+    V = istieltjes(Φ)
     x = Fun(domain(V))
 
     @test 10.0I + sum.(Array(V)) + stieltjes(x*V, 10.0) ≈ 10.0Φ(10.0)
+
+
+    # check rhmatrix relationship for below
+    U = V*(-2π*im)
+    U1 = U[1,:]
+    n= ncoefficients(U1)
+    L = rhmatrix(transpose(G),n)
+    vals = collocationvalues(transpose(G)-I, n)
+    @test L*coefficients(U1) ≈ vals[:,1]
+end
+
+
+@testset "6 rays" begin
+    @testset "HM on 6 rays" begin
+        s₁,s₂,s₃ = -im,0,im
+        @assert s₁ - s₂ + s₃ + s₁*s₂*s₃ ≈ 0
+
+        # construct true solution using 4 rays
+        Γ = Segment(0, 2.5exp(im*π/6)) ∪ Segment(0, 2.5exp(5im*π/6)) ∪
+        Segment(0, 2.5exp(-5im*π/6)) ∪ Segment(0, 2.5exp(-im*π/6))
+        sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
+
+        G = Fun( z -> if angle(z) ≈ π/6
+                            [1 0; s₁*exp(8im/3*z^3) 1]
+                        elseif angle(z) ≈ 5π/6
+                            [1 0; s₃*exp(8im/3*z^3) 1]
+                        elseif angle(z) ≈ -π/6
+                            [1 -s₃*exp(-8im/3*z^3); 0 1]
+                        elseif angle(z) ≈ -5π/6
+                            [1 -s₁*exp(-8im/3*z^3); 0 1]
+                        end
+                            , sp)
+
+        Φ = transpose(rhsolve(transpose(G), 2*6*100))
+
+
+        # debug
+        V4 = istieltjes(Φ)
+
+        @test stieltjes(V4,1+im)+I == Φ(1+im)
+
+
+        Γ = Segment(0, 2.5exp(im*π/6))   ∪
+        Segment(0, 2.5exp(im*π/2))       ∪
+        Segment(0, 2.5exp(5im*π/6))      ∪
+        Segment(0, 2.5exp(-5im*π/6))     ∪
+        Segment(0, 2.5exp(-im*π/2))      ∪
+        Segment(0, 2.5exp(-im*π/6));
+
+        G = Fun( z -> if angle(z) ≈ π/6
+                        [1                             0;
+                        s1*exp(8im/3*z^3+2im*x*z)     1]
+                    elseif angle(z) ≈ π/2
+                        [1                 s2*exp(-8im/3*z^3-2im*x*z);
+                        0                 1]
+                    elseif angle(z) ≈ 5π/6
+                        [1                             0;
+                        s3*exp(8im/3*z^3+2im*x*z)     1]
+                    elseif angle(z) ≈ -π/6
+                        [1                -s3*exp(-8im/3*z^3-2im*x*z);
+                        0                 1]
+                    elseif angle(z) ≈ -π/2
+                        [1                             0;
+                        -s2*exp(8im/3*z^3+2im*x*z)    1]
+                    elseif angle(z) ≈ -5π/6
+                        [1                -s1*exp(-8im/3*z^3-2im*x*z);
+                        0                 1]
+                    end
+                        , Γ);
+        sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
+        V = Fun(V4, sp)
+
+        @test stieltjes(V,1+im)+I ≈ Φ(1+im)
+        
+        U = V*(-2π*im)
+
+        U1 = U[1,:]
+        @test cauchy(U1,1+im)+[1,0] ≈ Φ(1+im)[1,:]
+        @test abs(sum(first.(components(U1[1])))) ≤ 100eps()
+        @test abs(sum(first.(components(U1[2])))) ≤ 100eps()
+
+
+        U11 = U1[1]
+        n = ncoefficients(U11)
+        C₋ = fpcauchymatrix(space(U11), n, n)
+        pts = collocationpoints(space(U11), n)
+        c = C₋*coefficients(U11)
+        
+        @test c[1] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,1))))
+        @test c[2] ≈ cauchy(U11,pts[2])
+        @test c[100] ≈ finitepart(cauchy(U11,orientedleftendpoint(component(Γ,1))⁻))
+        @test c[101] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,2))))
+
+        n = ncoefficients(U1)
+        L = rhmatrix(transpose(G),n)
+        vals = collocationvalues(transpose(G)-I, n)
+        pts = collocationpoints(space(U1),n)
+
+        c = L*coefficients(U1)
+        @test c ≈ vals[:,1]
+
+        @test coefficients(U1) ≈ L \ vals[:,1]
+    end
 end
