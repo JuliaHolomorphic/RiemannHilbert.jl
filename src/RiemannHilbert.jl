@@ -29,7 +29,7 @@ import Base: sinpi, cospi, exp,
                 sech, acosh, asech, tanh, coth, atanh, acoth,
                 expm1, log1p, sinc, cosc,
                 abs, sign, log, expm1, tan, abs2, sqrt, angle, max, min, cbrt, log,
-                atan, acos, asin, inv, real, imag, abs
+                atan, acos, asin, inv, real, imag, abs, conj
 
 import LinearAlgebra: conj, transpose
 
@@ -238,6 +238,9 @@ evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(undef,n,n
 
 fprightstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedrightendpoint(domain(sp))), finitepart)
 fpleftstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedleftendpoint(domain(sp))), finitepart)
+fprightstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedrightendpoint(d), finitepart)
+fpleftstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedleftendpoint(d), finitepart)
+
 function fpstieltjesmatrix!(C, sp, d)
     m, n = size(C)
     pts = collocationpoints(d, m)
@@ -248,18 +251,18 @@ function fpstieltjesmatrix!(C, sp, d)
         end
         fpleftstieltjesmoment!(view(C,m,:), sp)
     elseif leftendpoint(d) ∈ domain(sp) && rightendpoint(d) ∈ domain(sp)
-        fprightstieltjesmoment!(view(C,1,:), sp)
+        fprightstieltjesmoment!(view(C,1,:), sp, d)
         for k=2:m-1
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end
-        fpleftstieltjesmoment!(view(C,m,:), sp)
+        fpleftstieltjesmoment!(view(C,m,:), sp, d)
     elseif leftendpoint(d) ∈ domain(sp)
         for k=1:m-1
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end
-        fpleftstieltjesmoment!(view(C,m,:), sp)
+        fpleftstieltjesmoment!(view(C,m,:), sp, d)
     elseif rightendpoint(d) ∈ domain(sp)
-        fprightstieltjesmoment!(view(C,1,:), sp)
+        fprightstieltjesmoment!(view(C,1,:), sp, d)
         for k=2:m
             stieltjesmoment!(view(C,k,:), sp, pts[k])
         end

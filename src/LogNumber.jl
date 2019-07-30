@@ -23,6 +23,10 @@ Base.isapprox(a::LogNumber, b::LogNumber; opts...) = ≈(logpart(a), logpart(b);
 
 (l::LogNumber)(ε) = logpart(l)*log(ε) + finitepart(l)
 
+for op in (:real, :imag, :conj)
+    @eval $op(l::LogNumber) = LogNumber($op(logpart(l)), $op(finitepart(l)))
+end
+
 for f in (:+, :-)
     @eval begin
         $f(a::LogNumber, b::LogNumber) = LogNumber($f(a.s, b.s), $f(a.c, b.c))

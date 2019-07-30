@@ -53,6 +53,10 @@ end
 @testset "Directed and RiemannDual" begin
     @test undirected(Directed{false}(RiemannDual(0,-1))) == 0
 
+    @test real(LogNumber(2im,im+1)) == LogNumber(0,1)
+    @test imag(LogNumber(2im,im+1)) == LogNumber(2,1)
+    @test conj(LogNumber(2im,im+1)) == LogNumber(-2im,1-im)
+
     @test log(Directed{false}(RiemannDual(0,-1))) == LogNumber(1,π*im)
     @test log(Directed{true}(RiemannDual(0,-1))) == LogNumber(1,-π*im)
 
@@ -134,11 +138,32 @@ end
         f = Fun(x->exp(-40(x-0.1)^2), sp)
         v = components(f)
         ns = ncoefficients.(v)
+        C11 = fpstieltjesmatrix(space(v[1]), ncoefficients(v[1]), ncoefficients(v[1]))
+        c_vals11 = C11*v[1].coefficients
+        h = 0.00000001; @test stieltjes(v[1],h*im) ≈ stieltjes(v[1],RiemannDual(0.0,im))(h) atol=1E-6
+        @test finitepart(stieltjes(v[1],Directed{false}(RiemannDual(0.0,-1)))) ≈ c_vals11[1]
+
+        C22 = fpstieltjesmatrix(space(v[2]), ncoefficients(v[2]), ncoefficients(v[2]))
+        c_vals22 = C22*v[2].coefficients
+        h = 0.00000001; @test stieltjes(v[2],h*im) ≈ stieltjes(v[2],RiemannDual(0.0,im))(h) atol=1E-6
+        @test finitepart(stieltjes(v[2],Directed{false}(RiemannDual(0.0,1)))) ≈ c_vals22[end]
+
+        C12 = fpstieltjesmatrix(space(v[2]), domain(v[1]), ncoefficients(v[1]), ncoefficients(v[2]))        
+        c_vals12 = C12*v[2].coefficients
+        h = 0.00000001; @test stieltjes(v[2],-h) ≈ stieltjes(v[2],RiemannDual(0.0,-1))(h) atol=1E-6
+        @test finitepart(stieltjes(v[2],RiemannDual(0.0,-1))) ≈ c_vals12[1]
+
         C = fpstieltjesmatrix(space(f), ns, ns)
         @test norm(C) ≤ 200
 
+        @test C[1:44,1:2:end] == C1
+
         c_vals = C*coefficients(f)
         pts = RiemannHilbert.collocationpoints(space(f), ns)
+
+        f_ex = Fun(x->exp(-40(x-0.1)^2), Legendre())
+        @test stieltjes(f_ex, Directed{false}(0.0)) ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,-im))))
+        @test finitepart(stieltjes(v[1],RiemannDual(0.0,-im))+stieltjes(v[2],RiemannDual(0.0,-im))) ≈ stieltjes(f_ex,Directed{false}(0.0))
 
         @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,-im))))
         @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,exp(-0.1im)))))
@@ -477,7 +502,6 @@ end
         @test Φ(0.1⁺) ≈ G(0.1)Φ(0.1⁻)
     end
 end
-
 
 @testset "Matrix rhsolve" begin
     sp = ArraySpace(Legendre(), 2)
