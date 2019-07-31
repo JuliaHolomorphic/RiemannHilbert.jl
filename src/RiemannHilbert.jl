@@ -11,7 +11,8 @@ import FastTransforms: ichebyshevtransform!
 import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ
 import ApproxFunBase: mobius, pieces, npieces, piece, BlockInterlacer, interlacer, pieces_npoints,
                     ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun,
-                    dimension, evaluate, prectype, cfstype, Space, SumSpace, spacescompatible
+                    dimension, evaluate, prectype, cfstype, Space, SumSpace, spacescompatible,
+                    pieces
 import ApproxFunOrthogonalPolynomials: PolynomialSpace, recA, recB, recC, IntervalOrSegmentDomain, IntervalOrSegment
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
@@ -447,6 +448,33 @@ end
 
 include("KdV.jl")
 
+function unorientedangles(ds, z₀)
+    ret = Vector{Float64}()
+    for d in ds
+        if z₀ ≈ leftendpoint(d)
+            push!(ret, angle(rightendpoint(d)-z₀))
+        elseif z₀ ≈ rightendpoint(d)
+            push!(ret, angle(leftendpoint(d)-z₀))
+        else
+            throw(ArgumentError("Must contain"))
+        end
+    end
+    ret
+end
 
+function productcondition(G, z₀)
+    Gs = filter(g -> z₀ ∈ domain(g),  pieces(G))
+    p =  sortperm( unorientedangles(domain.(Gs), z₀))
+
+    g₀ = Matrix{ComplexF64}(I, size(G))
+    for g in Gs[p]
+        if leftendpoint(domain(g)) ≈ z₀ 
+            g₀ = g₀ * first(g)
+        else
+            g₀ = g₀ * inv(first(g))
+        end
+    end
+    g₀
+end
 
 end #module
