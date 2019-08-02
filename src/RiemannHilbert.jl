@@ -471,10 +471,14 @@ function productcondition(G, z₀)
         if leftendpoint(domain(g)) ≈ z₀ 
             g₀ = g₀ * first(g)
         else
-            g₀ = g₀ * inv(first(g))
+            g₀ = g₀ * inv(last(g))
         end
     end
     g₀
+end
+
+function productcondition(G)
+    error("Implement")
 end
 
 end #module
