@@ -172,7 +172,7 @@ end
 collocationvalues(f::Fun{<:PiecewiseSpace}, n) = vcat(collocationvalues.(components(f), pieces_npoints(domain(f),n))...)
 
 function evaluationmatrix!(E, sp::PolynomialSpace, x)
-    x .= tocanonical.(Ref(sp), x)
+    x .= real(tocanonical.(Ref(sp), x))
 
     E[:,1] .= 1
     E[:,2] .= (recA(Float64,sp,0) .* x .+ recB(Float64,sp,0)) .* view(E,:,1)
