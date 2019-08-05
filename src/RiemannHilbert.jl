@@ -46,6 +46,7 @@ import FillArrays: AbstractFill
 export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes, KdV
 
 include("LogNumber.jl")
+include("PowerNumber.jl")
 
 
 
