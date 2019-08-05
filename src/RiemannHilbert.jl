@@ -16,7 +16,7 @@ import ApproxFunOrthogonalPolynomials: PolynomialSpace, recA, recB, recC, Interv
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
                 >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
-                isinf, in
+                isinf, in, real, imag, conj
 
 # we need to import all special functions to use Calculus.symbolic_derivatives_1arg
 # we can't do importall Base as we replace some Base definitions

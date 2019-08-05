@@ -1,6 +1,6 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, LinearAlgebra, FastTransforms, SpecialFunctions, Test
 import ApproxFunBase: ArraySpace, pieces, dotu, interlace
-import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedrightendpoint, finitepart, fpcauchymatrix
+import RiemannHilbert: RiemannDual, LogNumber, PowerNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedrightendpoint, finitepart, fpcauchymatrix
 import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻, istieltjes
 import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
@@ -53,6 +53,10 @@ end
 @testset "Directed and RiemannDual" begin
     @test undirected(Directed{false}(RiemannDual(0,-1))) == 0
 
+    @test real(LogNumber(2im,im+1)) == LogNumber(0,1)
+    @test imag(LogNumber(2im,im+1)) == LogNumber(2,1)
+    @test conj(LogNumber(2im,im+1)) == LogNumber(-2im,1-im)
+
     @test log(Directed{false}(RiemannDual(0,-1))) == LogNumber(1,π*im)
     @test log(Directed{true}(RiemannDual(0,-1))) == LogNumber(1,-π*im)
 
@@ -76,6 +80,15 @@ end
     @test RiemannHilbert.orientedleftendpoint(ChebyshevInterval()) == RiemannDual(-1.0,1)
     @test RiemannHilbert.orientedrightendpoint(ChebyshevInterval()) == RiemannDual(1.0,-1)
 end
+
+@testset "PowerNumbers arithmetic" begin
+    @test real(PowerNumber(2im,im+1,0.5)) == PowerNumber(0,1,0.5)
+    @test imag(PowerNumber(2im,im+1,0.5)) == PowerNumber(2,1,0.5)
+    @test conj(PowerNumber(2im,im+1,0.5)) == PowerNumber(-2im,1-im,0.5)
+    
+    @test (3*PowerNumber(0.01+3im,0.2im+1,0.4) - 4*PowerNumber(0.6-1.5im,1.5-0.3im,0.4))/3 == PowerNumber(-0.79+5.0im,-1.0 + 0.6im,0.4)
+end
+
 
 @testset "Interval FPStieltjes" begin
     Γ = ChebyshevInterval()

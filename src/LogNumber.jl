@@ -53,6 +53,10 @@ function exp(l::LogNumber)::ComplexF64
     end
 end
 
+real(l::LogNumber) = LogNumber(real(l.s), real(l.c))
+imag(l::LogNumber) = LogNumber(imag(l.s), imag(l.c))
+conj(l::LogNumber) = real(l)-im*imag(l)
+
 # This is a relative version of dual number, in the sense that its realpart*(1+epsilon)
 struct RiemannDual{T} <: Number
     realpart::T
@@ -128,8 +132,6 @@ function atanh(z::RiemannDual)
         error("Not implemented")
     end
 end
-
-
 
 
 

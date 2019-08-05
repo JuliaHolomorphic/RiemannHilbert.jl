@@ -15,7 +15,7 @@ end
 
 Base.promote_rule(::Type{PowerNumber}, ::Type{<:Number}) = PowerNumber
 Base.convert(::Type{PowerNumber}, z::PowerNumber) = z
-Base.convert(::Type{PowerNumber}, z::Number) = PowerNumber(0, z, 1)
+Base.convert(::Type{PowerNumber}, z::Number) = PowerNumber(0, z, 0)
 
 ==(a::PowerNumber, b::PowerNumber) = powerpart(a) == powerpart(b) && exppart(a) == exppart(b) && finitepart(a) == finitepart(b)
 Base.isapprox(a::PowerNumber, b::PowerNumber; opts...) = ≈(powerpart(a), powerpart(b); opts...) && ≈(exppart(a), exppart(b); opts...) && ≈(finitepart(a), finitepart(b); opts...)
@@ -42,5 +42,9 @@ end
 /(l::PowerNumber, b::Number) = PowerNumber(l.s/b, l.c/b, l.α)
 
 exp(l::PowerNumber)::ComplexF64 = exp(l.c)
+
+real(l::PowerNumber) = PowerNumber(real(l.s), real(l.c), l.α)
+imag(l::PowerNumber) = PowerNumber(imag(l.s), imag(l.c), l.α)
+conj(l::PowerNumber) = real(l)-im*imag(l)
 
 Base.show(io::IO, x::PowerNumber) = print(io, "($(powerpart(x)))ε^$(exppart(x)) + ($(finitepart(x)))")
