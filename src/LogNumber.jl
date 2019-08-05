@@ -47,7 +47,7 @@ function exp(l::LogNumber)::ComplexF64
     elseif real(l.s) < 0
         Inf+Inf*im
     elseif real(l.s) == 0 && imag(l.s) == 0
-        log(l.c)
+        exp(l.c)
     else
         NaN + NaN*im
     end
