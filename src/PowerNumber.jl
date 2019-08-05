@@ -7,9 +7,7 @@ struct PowerNumber <: Number
     α::Float64
 end
 
-@inline powerpart(z::Number) = zero(z)
-@inline finitepart(z::Number) = z
-@inline exppart(l::Number) = l
+@inline exppart(l::Number) = 0
 
 @inline powerpart(l::PowerNumber) = l.s
 @inline finitepart(l::PowerNumber) = l.c
