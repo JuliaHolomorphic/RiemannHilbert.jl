@@ -1,6 +1,6 @@
 using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, LinearAlgebra, FastTransforms, SpecialFunctions, Test
 import ApproxFunBase: ArraySpace, pieces, dotu, interlace
-import RiemannHilbert: RiemannDual, LogNumber, PowerNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedleftendpoint, orientedrightendpoint, finitepart, fpcauchymatrix, collocationvalues, collocationpoints
+import RiemannHilbert: RiemannDual, LogNumber, PowerNumber, ProductCondition, fpstieltjesmatrix!, fpstieltjesmatrix, orientedleftendpoint, orientedrightendpoint, finitepart, fpcauchymatrix, collocationvalues, collocationpoints
 import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻, istieltjes
 import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
@@ -124,6 +124,46 @@ end
     @test norm(C) ≤ 200
     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
     @test c(0.5) ≈ stieltjes(f,0.5⁻)
+end
+
+@testset "Product condition" begin
+    (s1,s2,s3)=(-2im,0,2im); x=-20; n=450
+    z_0 = sqrt(-x)/2
+    ΓD  = Segment(-z_0, z_0)  
+    Γ1  = Segment(z_0, z_0 + 2.5exp(im*π/4))
+    ΓUi = Segment(z_0, z_0 + 2.5exp(im*3π/4))
+    ΓU  = Segment(-z_0, -z_0 + 2.5exp(im*π/4))
+    Γ3  = Segment(-z_0, -z_0 + 2.5exp(im*3π/4))
+    Γ4  = Segment(-z_0, -z_0 + 2.5exp(-im*3π/4))
+    ΓL  = Segment(-z_0, -z_0 + 2.5exp(-im*π/4))
+    ΓLi = Segment(z_0, z_0 + 2.5exp(-im*3π/4)) 
+    Γ6  = Segment(z_0, z_0 + 2.5exp(-im*π/4)) 
+    Γ = ΓD ∪ Γ1 ∪ ΓUi ∪ ΓU ∪ Γ3 ∪ Γ4 ∪ ΓL ∪ ΓLi ∪ Γ6
+    
+    Θ(z) = 8/3*z^3+2*x*z
+    
+    D(z)     = [1-s1*s3 0; 0 1/(1-s1*s3)]
+    S1(z)    = [1 0; s1*exp(im*Θ(z)) 1]
+    Ui(z)    = [1 s3*exp(-im*Θ(z))/(1-s1*s3); 0 1]
+    U(z)     = [1 -s3*exp(-im*Θ(z))/(1-s1*s3); 0 1]
+    S3(z)    = [1 0; s3*exp(im*Θ(z)) 1]
+    S4(z)    = [1 -s1*exp(-im*Θ(z)); 0 1]
+    L(z)     = [1 0; s1*exp(im*Θ(z))/(1-s1*s3) 1]
+    Li(z)    = [1 0; -s1*exp(im*Θ(z))/(1-s1*s3) 1]
+    S6(z)    = [1 -s3*exp(-im*Θ(z)); 0 1]
+    
+    G = Fun( z -> if z in component(Γ, 1)    D(z)
+              elseif z in component(Γ, 2)    S1(z)
+              elseif z in component(Γ, 3)    Ui(z)
+              elseif z in component(Γ, 4)    U(z)
+              elseif z in component(Γ, 5)    S3(z)
+              elseif z in component(Γ, 6)    S4(z)
+              elseif z in component(Γ, 7)    L(z)
+              elseif z in component(Γ, 8)    Li(z)
+              elseif z in component(Γ, 9)    S6(z)
+              end, Γ);
+
+    @test productcondition(G)
 end
 
 @testset "finitepart stieltjes" begin
