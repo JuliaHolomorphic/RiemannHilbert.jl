@@ -187,7 +187,7 @@ evaluationmatrix!(E, sp::PolynomialSpace) =
     evaluationmatrix!(E, sp, collocationpoints(sp, size(E,1)))
 
 evaluationmatrix(sp::PolynomialSpace, x, n) =
-    evaluationmatrix!(Array{Float64}(undef, length(x), n), sp,x)
+    evaluationmatrix!(Array{Float64}(undef, length(x), n), sp,copy(x))
 
 
 function evaluationmatrix!(C, sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})

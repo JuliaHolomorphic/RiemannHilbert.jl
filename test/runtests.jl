@@ -156,7 +156,7 @@ end
         C = fpstieltjesmatrix(space(f), ns, ns)
         @test norm(C) ≤ 200
 
-        @test C[1:44,1:2:end] == C1
+        @test C[1:44,1:2:end] == C11
 
         c_vals = C*coefficients(f)
         pts = RiemannHilbert.collocationpoints(space(f), ns)
@@ -689,6 +689,7 @@ end
 
         # debug
         V4 = istieltjes(Φ)
+        x = 0.0
 
         @test stieltjes(V4,1+im)+I == Φ(1+im)
 
@@ -702,21 +703,21 @@ end
 
         G = Fun( z -> if angle(z) ≈ π/6
                         [1                             0;
-                        s1*exp(8im/3*z^3+2im*x*z)     1]
+                        s₁*exp(8im/3*z^3+2im*x*z)     1]
                     elseif angle(z) ≈ π/2
-                        [1                 s2*exp(-8im/3*z^3-2im*x*z);
+                        [1                 s₂*exp(-8im/3*z^3-2im*x*z);
                         0                 1]
                     elseif angle(z) ≈ 5π/6
                         [1                             0;
-                        s3*exp(8im/3*z^3+2im*x*z)     1]
+                        s₃*exp(8im/3*z^3+2im*x*z)     1]
                     elseif angle(z) ≈ -π/6
-                        [1                -s3*exp(-8im/3*z^3-2im*x*z);
+                        [1                -s₃*exp(-8im/3*z^3-2im*x*z);
                         0                 1]
                     elseif angle(z) ≈ -π/2
                         [1                             0;
-                        -s2*exp(8im/3*z^3+2im*x*z)    1]
+                        -s₂*exp(8im/3*z^3+2im*x*z)    1]
                     elseif angle(z) ≈ -5π/6
-                        [1                -s1*exp(-8im/3*z^3-2im*x*z);
+                        [1                -s₁*exp(-8im/3*z^3-2im*x*z);
                         0                 1]
                     end
                         , Γ);
@@ -741,8 +742,8 @@ end
         
         @test c[1] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,1))))
         @test c[2] ≈ cauchy(U11,pts[2])
-        @test c[100] ≈ finitepart(cauchy(U11,orientedleftendpoint(component(Γ,1))⁻))
-        @test c[101] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,2))))
+        @test c[150] ≈ finitepart(cauchy(U11,orientedleftendpoint(component(Γ,1))⁻))
+        @test c[151] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,2))))
 
         n = ncoefficients(U1)
         L = rhmatrix(transpose(G),n)
@@ -755,3 +756,5 @@ end
         @test coefficients(U1) ≈ L \ vals[:,1]
     end
 end
+
+include("test_nls.jl")
