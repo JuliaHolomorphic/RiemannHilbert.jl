@@ -47,7 +47,7 @@ import FillArrays: AbstractFill
 export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes, KdV
 
 include("LogNumber.jl")
-
+include("PowerNumber.jl")
 
 
 function component_indices(it::BlockInterlacer, N::Int, kr::UnitRange)
