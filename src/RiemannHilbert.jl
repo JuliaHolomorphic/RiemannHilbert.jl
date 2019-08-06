@@ -508,6 +508,7 @@ function productcondition(G)
             result = false
         end
     end
+    result
 end
 
 end #module
