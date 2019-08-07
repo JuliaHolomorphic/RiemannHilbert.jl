@@ -19,11 +19,11 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-ApproxFun = "0.11.2"
+ApproxFun = "0.11.3"
 DomainSets = "0.1"
 DualNumbers = "0.6"
 FastTransforms = "0.5"
 FillArrays = "0.6"
-SingularIntegralEquations = "0.4"
+SingularIntegralEquations = "0.4.3"
 SpecialFunctions = "0.7"
 julia = "1"
