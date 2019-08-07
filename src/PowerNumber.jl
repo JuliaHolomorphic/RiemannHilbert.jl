@@ -44,7 +44,7 @@ end
 exp(l::PowerNumber)::ComplexF64 = exp(l.c)
 
 for op in (:real, :imag, :conj)
-    @eval $op(l::PowerNumber) = PowerNumber($op(powerpart(l)), $op(finitepart(l), exppart(l)))
+    @eval $op(l::PowerNumber) = PowerNumber($op(powerpart(l)), $op(finitepart(l)), exppart(l))
 end
 
 Base.show(io::IO, x::PowerNumber) = print(io, "($(powerpart(x)))ε^$(exppart(x)) + ($(finitepart(x)))")
