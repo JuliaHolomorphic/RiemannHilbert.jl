@@ -1,6 +1,6 @@
 module RiemannHilbert
 using Base, ApproxFun, SingularIntegralEquations, DualNumbers, LinearAlgebra,
-        SpecialFunctions, FillArrays, DomainSets, FastTransforms, SparseArrays
+        SpecialFunctions, FillArrays, DomainSets, FastTransforms, SparseArrays, PowerNumbers
 
 
 import DomainSets: UnionDomain, TypedEndpointsInterval
@@ -43,11 +43,10 @@ import SpecialFunctions: airy, besselh, erfcx, dawson, erf, erfi,
 
 import DualNumbers: Dual, realpart, epsilon, dual
 import FillArrays: AbstractFill
+import PowerNumbers: PowerNumber, LogNumber
 
 export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes, KdV
 
-include("LogNumber.jl")
-include("PowerNumber.jl")
 
 
 function component_indices(it::BlockInterlacer, N::Int, kr::UnitRange)
@@ -142,8 +141,8 @@ component_indices(sp::Space, k...) = component_indices(interlacer(sp), k...)
 
 
 
-orientedleftendpoint(d::IntervalOrSegment) = RiemannDual(leftendpoint(d), sign(d))
-orientedrightendpoint(d::IntervalOrSegment) = RiemannDual(rightendpoint(d), -sign(d))
+orientedleftendpoint(d::IntervalOrSegment) = PowerNumber(leftendpoint(d), sign(d), 1)
+orientedrightendpoint(d::IntervalOrSegment) = PowerNumber(rightendpoint(d), -sign(d), 1)
 
 
 # use 2nd kind to include endpoints
@@ -237,10 +236,10 @@ evaluationmatrix!(C, sp::ArraySpace) =
 
 evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(undef,n,n), sp)
 
-fprightstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedrightendpoint(domain(sp))), finitepart)
-fpleftstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedleftendpoint(domain(sp))), finitepart)
-fprightstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedrightendpoint(d), finitepart)
-fpleftstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedleftendpoint(d), finitepart)
+fprightstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedrightendpoint(domain(sp))), realpart)
+fpleftstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedleftendpoint(domain(sp))), realpart)
+fprightstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedrightendpoint(d), realpart)
+fpleftstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedleftendpoint(d), realpart)
 
 function fpstieltjesmatrix!(C, sp, d)
     m, n = size(C)
