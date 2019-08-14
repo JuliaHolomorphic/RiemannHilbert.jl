@@ -6,16 +6,6 @@ import SingularIntegralEquations.HypergeometricFunctions: speciallog
 
 
 @testset "RiemannDual" begin
-    for h in (0.1,0.01), a in (2exp(0.1im),1.1)
-        @test log(RiemannDual(0,a))(h) ≈ log(h*a)
-        @test log(RiemannDual(Inf,a))(h) ≈ log(a/h)
-    end
-
-    for h in (0.1,0.01), a in (2exp(0.1im),1.1)
-        @test log1p(RiemannDual(-1,a))(h) ≈ log(h*a)
-        @test log1p(RiemannDual(Inf,a))(h) ≈ log(a/h)
-    end
-
 
     h = 0.0000001
     for z in (RiemannDual(-1,-1), RiemannDual(1,1), RiemannDual(-1,2exp(0.1im)), RiemannDual(1,2exp(0.1im))),
@@ -24,24 +14,11 @@ import SingularIntegralEquations.HypergeometricFunctions: speciallog
         @test l(h) ≈ stieltjesjacobimoment(0,0,k,realpart(z)+epsilon(z)h) atol=1E-5
     end
 
-    h=0.0001
-    for z in (RiemannDual(1,3exp(0.2im)), RiemannDual(1,0.5exp(-1.3im)),
-                RiemannDual(-1,3exp(0.2im)), RiemannDual(-1,0.5exp(-1.3im)),
-                RiemannDual(-1,1), RiemannDual(1,-1))
-        @test atanh(z)(h) ≈  atanh(realpart(z)+epsilon(z)h) atol = 1E-4
-    end
-
-    z = RiemannDual(1,-0.25)
-    h = 0.0000001
-    @test speciallog(z)(h) ≈ speciallog(realpart(z)+epsilon(z)h) atol=1E-4
-
     h = 0.00001
     for z in (RiemannDual(-1,-1), RiemannDual(-1,exp(0.1im)), RiemannDual(-1,exp(-0.1im)))
         @test stieltjesjacobimoment(0.5,0,0,z)(h) ≈ stieltjesjacobimoment(0.5,0,0,realpart(z)+epsilon(z)h) atol=1E-4
     end
 
-    z = RiemannDual(1,2)
-    @test 1/(1-z(h)) ≈ (1/(1-z))(h) rtol=0.0001
 end 
 
 @testset "Legendre Cauchy" begin
@@ -54,22 +31,6 @@ end
 end
 
 @testset "Directed and RiemannDual" begin
-    @test undirected(Directed{false}(RiemannDual(0,-1))) == 0
-
-    @test real(LogNumber(2im,im+1)) == LogNumber(0,1)
-    @test imag(LogNumber(2im,im+1)) == LogNumber(2,1)
-    @test conj(LogNumber(2im,im+1)) == LogNumber(-2im,1-im)
-
-    @test log(Directed{false}(RiemannDual(0,-1))) == LogNumber(1,π*im)
-    @test log(Directed{true}(RiemannDual(0,-1))) == LogNumber(1,-π*im)
-
-    @test log(Directed{false}(RiemannDual(0,-1-eps()*im))) == LogNumber(1,π*im)
-    @test log(Directed{false}(RiemannDual(0,-1+eps()*im))) == LogNumber(1,π*im)
-
-    @test log(Directed{true}(RiemannDual(0,-1-eps()*im))) == LogNumber(1,-π*im)
-    @test log(Directed{true}(RiemannDual(0,-1+eps()*im))) == LogNumber(1,-π*im)
-
-
     z = Directed{false}(RiemannDual(1,-2))
 
     for k=0:1, s=(false,true)
