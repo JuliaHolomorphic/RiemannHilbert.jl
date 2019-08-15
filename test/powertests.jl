@@ -41,3 +41,10 @@ import PowerNumbers: PowerNumber, LogNumber, realpart, epsilon, alpha
     end
     6*(-2 + (1-2/undirected(x))*log1p(-x))
 end 
+
+@testset "Interval FPStieltjes" begin
+    f = Fun(x->exp(-40(x-0.1)^2), Legendre())
+    C = Array{ComplexF64}(undef, ncoefficients(f), ncoefficients(f))
+    d = Segment(-1,-1+im)
+    fpstieltjesmatrix!(C, space(f), d)
+end

@@ -6,7 +6,7 @@ import SingularIntegralEquations.HypergeometricFunctions: speciallog
 import PowerNumbers: PowerNumber, LogNumber, realpart, epsilon, alpha
 
 
-@testset "RiemannDual -> PowerNumber" begin
+@testset "PowerNumber -> PowerNumber" begin
 
     h = 0.0000001
     for z in (PowerNumber(-1,-1,1), PowerNumber(1,1,1), PowerNumber(-1,2exp(0.1im),1), PowerNumber(1,2exp(0.1im),1)),
@@ -161,19 +161,18 @@ end
     @test productcondition(G)
 end
 
-#=
-@testset "finitepart stieltjes" begin
+@testset "realpart stieltjes" begin
     f = Fun(exp,Legendre())
     f1 = Fun(exp,Legendre(-1..0))
     f2 = Fun(exp,Legendre(0..1))
     fp = f1+f2
 
-    @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,RiemannDual(0.0,-im)) + stieltjes(f2,RiemannDual(0.0,-im)))
-    @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,RiemannDual(0.0,exp(-0.1im))) + stieltjes(f2,RiemannDual(0.0,exp(-0.1im))))
-    @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,Directed{false}(RiemannDual(0.0,-1.0))) + stieltjes(f2,RiemannDual(0.0,-1.0)))
+    @test stieltjes(f,0.0⁻) ≈ realpart(stieltjes(f1,PowerNumber(0.0,-im,1)) + stieltjes(f2,PowerNumber(0.0,-im,1)))
+    @test stieltjes(f,0.0⁻) ≈ realpart(stieltjes(f1,PowerNumber(0.0,exp(-0.1im),1)) + stieltjes(f2,PowerNumber(0.0,exp(-0.1im),1)))
+    @test stieltjes(f,0.0⁻) ≈ realpart(stieltjes(f1,Directed{false}(PowerNumber(0.0,-1.0,1))) + stieltjes(f2,PowerNumber(0.0,-1.0,1)))
 
-    @test stieltjes(fp,RiemannDual(0.0,-im)) ≈ stieltjes(f1,RiemannDual(0.0,-im)) + stieltjes(f2,RiemannDual(0.0,-im))
-    @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(fp,RiemannDual(0.0,-im)))
+    @test stieltjes(fp,PowerNumber(0.0,-im,1)) ≈ stieltjes(f1,PowerNumber(0.0,-im,1)) + stieltjes(f2,PowerNumber(0.0,-im,1))
+    @test stieltjes(f,0.0⁻) ≈ realpart(stieltjes(fp,PowerNumber(0.0,-im,1)))
 end
 
 @testset "Two interval" begin
@@ -184,18 +183,18 @@ end
         ns = ncoefficients.(v)
         C11 = fpstieltjesmatrix(space(v[1]), ncoefficients(v[1]), ncoefficients(v[1]))
         c_vals11 = C11*v[1].coefficients
-        h = 0.00000001; @test stieltjes(v[1],h*im) ≈ stieltjes(v[1],RiemannDual(0.0,im))(h) atol=1E-6
-        @test finitepart(stieltjes(v[1],Directed{false}(RiemannDual(0.0,-1)))) ≈ c_vals11[1]
+        h = 0.00000001; @test stieltjes(v[1],h*im) ≈ stieltjes(v[1],PowerNumber(0.0,im,1))(h) atol=1E-6
+        @test realpart(stieltjes(v[1],Directed{false}(PowerNumber(0.0,-1,1)))) ≈ c_vals11[1]
 
         C22 = fpstieltjesmatrix(space(v[2]), ncoefficients(v[2]), ncoefficients(v[2]))
         c_vals22 = C22*v[2].coefficients
-        h = 0.00000001; @test stieltjes(v[2],h*im) ≈ stieltjes(v[2],RiemannDual(0.0,im))(h) atol=1E-6
-        @test finitepart(stieltjes(v[2],Directed{false}(RiemannDual(0.0,1)))) ≈ c_vals22[end]
+        h = 0.00000001; @test stieltjes(v[2],h*im) ≈ stieltjes(v[2],PowerNumber(0.0,im,1))(h) atol=1E-6
+        @test realpart(stieltjes(v[2],Directed{false}(PowerNumber(0.0,1,1)))) ≈ c_vals22[end]
 
         C12 = fpstieltjesmatrix(space(v[2]), domain(v[1]), ncoefficients(v[1]), ncoefficients(v[2]))        
         c_vals12 = C12*v[2].coefficients
-        h = 0.00000001; @test stieltjes(v[2],-h) ≈ stieltjes(v[2],RiemannDual(0.0,-1))(h) atol=1E-6
-        @test finitepart(stieltjes(v[2],RiemannDual(0.0,-1))) ≈ c_vals12[1]
+        h = 0.00000001; @test stieltjes(v[2],-h) ≈ stieltjes(v[2],PowerNumber(0.0,-1,1))(h) atol=1E-6
+        @test realpart(stieltjes(v[2],PowerNumber(0.0,-1,1))) ≈ c_vals12[1]
 
         C = fpstieltjesmatrix(space(f), ns, ns)
         @test norm(C) ≤ 200
@@ -206,46 +205,46 @@ end
         pts = RiemannHilbert.collocationpoints(space(f), ns)
 
         f_ex = Fun(x->exp(-40(x-0.1)^2), Legendre())
-        @test stieltjes(f_ex, Directed{false}(0.0)) ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,-im))))
-        @test finitepart(stieltjes(v[1],RiemannDual(0.0,-im))+stieltjes(v[2],RiemannDual(0.0,-im))) ≈ stieltjes(f_ex,Directed{false}(0.0))
+        @test stieltjes(f_ex, Directed{false}(0.0)) ≈ realpart(stieltjes(f,Directed{false}(PowerNumber(0.0,-im,1))))
+        @test realpart(stieltjes(v[1],PowerNumber(0.0,-im,1))+stieltjes(v[2],PowerNumber(0.0,-im,1))) ≈ stieltjes(f_ex,Directed{false}(0.0))
 
-        @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,-im))))
-        @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,exp(-0.1im)))))
-        @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test c_vals[1] ≈ realpart(stieltjes(f,Directed{false}(PowerNumber(0.0,-im,1))))
+        @test c_vals[1] ≈ realpart(stieltjes(f,Directed{false}(PowerNumber(0.0,exp(-0.1im),1))))
+        @test c_vals[1] ≈ realpart(stieltjes(f,PowerNumber(0.0,-im,1)))
         @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
-        @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
+        @test c_vals[ns[1]] ≈ realpart(stieltjes(f,PowerNumber(-1.0,-1.0,1)))
 
-        @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
+        @test c_vals[ns[1]+1] ≈ realpart(stieltjes(f,PowerNumber(1.0,1.0,1)))
         @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-        @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test c_vals[end] ≈ realpart(stieltjes(f,PowerNumber(0.0,-im,1)))
 
         h =0.00001
-        @test stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0-eps()*im))
+        @test stieltjes(v[1], Directed{false}(PowerNumber(0.0,-1.0,1))) ≈ stieltjes(v[1], PowerNumber(0.0,-1.0-eps()*im,1))
 
-        @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
+        @test realpart(stieltjes(v[1], Directed{false}(PowerNumber(0.0,-1.0,1)))+ stieltjes(v[2], PowerNumber(0.0,-1.0,1))) ≈
             stieltjes(v[1], -0.00000000001im)+stieltjes(v[2], -0.00000000001im)
 
 
-        @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
+        @test realpart(stieltjes(v[1], Directed{false}(PowerNumber(0.0,-1.0,1)))+ stieltjes(v[2], PowerNumber(0.0,-1.0,1))) ≈
             stieltjes(f, -0.00000000001im)
 
         @test c_vals[1] ≈ stieltjes(f, -0.0000000001im)
         @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
 
-        @test finitepart(stieltjes(f, RiemannDual(0.0,-im))) ≈ 
-            finitepart(stieltjes(v[1], RiemannDual(0.0,-im))+stieltjes(v[2], RiemannDual(0.0,-im)))
+        @test realpart(stieltjes(f, PowerNumber(0.0,-im,1))) ≈ 
+            realpart(stieltjes(v[1], PowerNumber(0.0,-im,1))+stieltjes(v[2], PowerNumber(0.0,-im,1)))
 
 
         C11 = fpstieltjesmatrix(space(v[1]), ncoefficients(v[1]), ncoefficients(v[1]))
         C12 = fpstieltjesmatrix(space(v[2]), domain(v[1]), ncoefficients(v[1]), ncoefficients(v[2]))
 
-        @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))) ≈ (C11*coefficients(v[1]))[1]
-        @test finitepart(stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈ dotu(stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), finitepart),
+        @test realpart(stieltjes(v[1], Directed{false}(PowerNumber(0.0,-1.0,1)))) ≈ (C11*coefficients(v[1]))[1]
+        @test realpart(stieltjes(v[2], PowerNumber(0.0,-1.0,1))) ≈ dotu(stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), realpart),
                     coefficients(v[2]))
 
-        @test C12[1,:] ≈ stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), finitepart)
+        @test C12[1,:] ≈ stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), realpart)
 
-        @test finitepart(stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈ (C12*coefficients(v[2]))[1]
+        @test realpart(stieltjes(v[2], PowerNumber(0.0,-1.0,1))) ≈ (C12*coefficients(v[2]))[1]
         @test C[1,:] ≈ interlace(C11[1,:], C12[1,:])
     end
 
@@ -260,29 +259,29 @@ end
         c_vals = C*coefficients(f)
         pts = RiemannHilbert.collocationpoints(space(f), ns)
 
-        @test stieltjes(f,-1-eps()) ≈ stieltjes(f,RiemannDual(-1.0,-1.0)).c
-        @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
+        @test stieltjes(f,-1-eps()) ≈ stieltjes(f,PowerNumber(-1.0,-1.0,1)).c
+        @test c_vals[1] ≈ realpart(stieltjes(f,PowerNumber(-1.0,-1.0,1)))
         @test c_vals[2:ns[1]-1] ≈ stieltjes.(f,pts[2:ns[1]-1]⁻)
-        @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(0.0,+im)))
-        @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
+        @test c_vals[ns[1]] ≈ realpart(stieltjes(f,PowerNumber(0.0,+im,1)))
+        @test c_vals[ns[1]+1] ≈ realpart(stieltjes(f,PowerNumber(1.0,1.0,1)))
         @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-        @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test c_vals[end] ≈ realpart(stieltjes(f,PowerNumber(0.0,-im,1)))
 
 
         h =0.00001
-        @test stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0+eps()*im))
-        @test stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0-eps()*im))
+        @test stieltjes(v[1], Directed{false}(PowerNumber(0.0,-1.0,1))) ≈ stieltjes(v[1], PowerNumber(0.0,-1.0+eps()*im,1))
+        @test stieltjes(v[1], Directed{true}(PowerNumber(0.0,-1.0,1))) ≈ stieltjes(v[1], PowerNumber(0.0,-1.0-eps()*im,1))
 
-        @test stieltjes(v[2], RiemannDual(0.0,-1.0))(h) ≈ stieltjes(v[2], -h) atol=1E-3
+        @test stieltjes(v[2], PowerNumber(0.0,-1.0,1))(h) ≈ stieltjes(v[2], -h) atol=1E-3
 
-        @test stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))(h) ≈ stieltjes(v[1], -h-eps()*im) atol=1E-3
+        @test stieltjes(v[1], Directed{true}(PowerNumber(0.0,-1.0,1)))(h) ≈ stieltjes(v[1], -h-eps()*im) atol=1E-3
 
 
-        @test finitepart(stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
+        @test realpart(stieltjes(v[1], Directed{true}(PowerNumber(0.0,-1.0,1)))+ stieltjes(v[2], PowerNumber(0.0,-1.0,1))) ≈
             stieltjes(v[1], -0.00000000001im)+stieltjes(v[2], -0.00000000001im)
 
 
-        @test finitepart(stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
+        @test realpart(stieltjes(v[1], Directed{true}(PowerNumber(0.0,-1.0,1)))+ stieltjes(v[2], PowerNumber(0.0,-1.0,1))) ≈
             stieltjes(f, -0.00000000001im)
 
         @test c_vals[ns[1]] ≈ stieltjes(f, +0.0000000001im)
@@ -300,12 +299,12 @@ end
         c_vals = C*coefficients(f)
         pts = RiemannHilbert.collocationpoints(space(f), ns)
 
-        @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test c_vals[1] ≈ realpart(stieltjes(f,PowerNumber(0.0,-im,1)))
         @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
-        @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
-        @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
+        @test c_vals[ns[1]] ≈ realpart(stieltjes(f,PowerNumber(-1.0,-1.0,1)))
+        @test c_vals[ns[1]+1] ≈ realpart(stieltjes(f,PowerNumber(1.0,1.0,1)))
         @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-        @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
+        @test c_vals[end] ≈ realpart(stieltjes(f,PowerNumber(0.0,-im,1)))
     end
 end
 
@@ -784,10 +783,10 @@ end
         pts = collocationpoints(space(U11), n)
         c = C₋*coefficients(U11)
         
-        @test c[1] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,1))))
+        @test c[1] ≈ realpart(cauchy(U11,orientedrightendpoint(component(Γ,1))))
         @test c[2] ≈ cauchy(U11,pts[2])
-        @test c[150] ≈ finitepart(cauchy(U11,orientedleftendpoint(component(Γ,1))⁻))
-        @test c[151] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,2))))
+        @test c[150] ≈ realpart(cauchy(U11,orientedleftendpoint(component(Γ,1))⁻))
+        @test c[151] ≈ realpart(cauchy(U11,orientedrightendpoint(component(Γ,2))))
 
         n = ncoefficients(U1)
         L = rhmatrix(transpose(G),n)
@@ -801,5 +800,4 @@ end
     end
 end
 
-include("test_nls.jl")
-=#
+include("test\\test_nls.jl")
