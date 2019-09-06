@@ -8,7 +8,9 @@ import DomainSets: UnionDomain, TypedEndpointsInterval
 import FastTransforms: ichebyshevtransform!
 
 
-import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ
+import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ,
+                                    mxa_₂F₁, _₂F₁general, directed_mxa_₂F₁, directed_₂F₁general
+
 import ApproxFunBase: mobius, pieces, npieces, piece, BlockInterlacer, interlacer, pieces_npoints,
                     ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun,
                     dimension, evaluate, prectype, cfstype, Space, SumSpace, spacescompatible,

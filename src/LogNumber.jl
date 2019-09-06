@@ -152,3 +152,7 @@ Base.show(io::IO, x::LogNumber) = print(io, "($(logpart(x)))log ε + $(finitepar
 # function /(l::LogNumber, b::RiemannDual)
 #     @assert isinf(realpart(b))
 #     LogNumber(l.s/b, l.c/b)
+
+
+mxa_₂F₁(a, b, c, z::RiemannDual) = directed_mxa_₂F₁(a,b,c,z)
+_₂F₁general(a::Number, b::Number, c::Number, z::RiemannDual) = directed_₂F₁general(a,b,c,z)
