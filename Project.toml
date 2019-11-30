@@ -1,6 +1,6 @@
 name = "RiemannHilbert"
 uuid = "79305c5b-9889-52e9-bdbd-56f883c71fe0"
-version = "0.0.2"
+version = "0.0.3"
 
 [deps]
 ApproxFun = "28f2ccd6-bb30-5033-b560-165f7b14dc2f"
@@ -19,11 +19,11 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-ApproxFun = "0.11.6"
+ApproxFun = "0.11.8"
 DomainSets = "0.1"
 DualNumbers = "0.6"
-FastTransforms = "0.5,0.6,0.7"
-FillArrays = "0.6,0.7"
-SingularIntegralEquations = "0.5"
-SpecialFunctions = "0.7,0.8"
-julia = "1"
+FastTransforms = "0.8"
+FillArrays = "0.6,0.7,0.8"
+SingularIntegralEquations = "0.6"
+SpecialFunctions = "0.7,0.8,0.9"
+julia = "1.3"
