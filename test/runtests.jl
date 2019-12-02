@@ -156,7 +156,7 @@ end
         C = fpstieltjesmatrix(space(f), ns, ns)
         @test norm(C) ≤ 200
 
-        @test C[1:44,1:2:end] == C11
+        @test C[1:ns[1],1:2:end] == C11
 
         c_vals = C*coefficients(f)
         pts = RiemannHilbert.collocationpoints(space(f), ns)
