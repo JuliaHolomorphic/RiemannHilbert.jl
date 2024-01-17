@@ -1,6 +1,6 @@
 module RiemannHilbert
 using Base, ApproxFun, SingularIntegralEquations, DualNumbers, LinearAlgebra,
-        SpecialFunctions, FillArrays, DomainSets, FastTransforms, SparseArrays
+        SpecialFunctions, FillArrays, DomainSets, FastTransforms, SparseArrays, PowerNumbers
 
 
 import DomainSets: UnionDomain, TypedEndpointsInterval
@@ -45,10 +45,9 @@ import SpecialFunctions: airy, besselh, erfcx, dawson, erf, erfi,
 
 import DualNumbers: Dual, realpart, epsilon, dual
 import FillArrays: AbstractFill
+import PowerNumbers: PowerNumber, LogNumber
 
 export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes, KdV
-
-include("LogNumber.jl")
 
 
 
@@ -144,8 +143,8 @@ component_indices(sp::Space, k...) = component_indices(interlacer(sp), k...)
 
 
 
-orientedleftendpoint(d::IntervalOrSegment) = RiemannDual(leftendpoint(d), sign(d))
-orientedrightendpoint(d::IntervalOrSegment) = RiemannDual(rightendpoint(d), -sign(d))
+orientedleftendpoint(d::IntervalOrSegment) = PowerNumber(leftendpoint(d), sign(d), 1)
+orientedrightendpoint(d::IntervalOrSegment) = PowerNumber(rightendpoint(d), -sign(d), 1)
 
 
 # use 2nd kind to include endpoints
@@ -239,10 +238,10 @@ evaluationmatrix!(C, sp::ArraySpace) =
 
 evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(undef,n,n), sp)
 
-fprightstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedrightendpoint(domain(sp))), finitepart)
-fpleftstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedleftendpoint(domain(sp))), finitepart)
-fprightstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedrightendpoint(d), finitepart)
-fpleftstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedleftendpoint(d), finitepart)
+fprightstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedrightendpoint(domain(sp))), realpart)
+fpleftstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedleftendpoint(domain(sp))), realpart)
+fprightstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedrightendpoint(d), realpart)
+fpleftstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedleftendpoint(d), realpart)
 
 function fpstieltjesmatrix!(C, sp, d)
     m, n = size(C)
@@ -479,8 +478,38 @@ function productcondition(G, z₀)
     g₀
 end
 
+function approx_unique(A::Array{Complex{Float64},1})
+    A = sort(A, lt = (x,y) -> real(x)==real(y) ? imag(x)<imag(y) : real(x)<real(y))
+    out = A[1]
+    for i = 2:size(A)[1]
+        if !(A[i] ≈ A[i-1])
+            out = vcat(out, A[i])
+        end
+    end
+    out
+end
+
 function productcondition(G)
-    error("Implement")
+    N = size(pieces(G))[1]
+    points = zeros(ComplexF64, 2*N)
+    for i = 1:N
+        points[2i-1:2i] = [domain(pieces(G)[i]).a, domain(pieces(G)[i]).b]
+    end
+    points
+    u = approx_unique(points)
+    d = Dict([(i,count(x->x≈i,points)) for i in u])
+    junctions = keys(filter(p->p.second>=2, d))
+    result = true
+    
+    for j in junctions
+        if productcondition(G, j) ≈ I
+            println(j, " satisfies product condition.")
+        else
+            println(j, " doesn't satisfy product condition.")
+            result = false
+        end
+    end
+    result
 end
 
 end #module

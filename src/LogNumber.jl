@@ -51,7 +51,7 @@ function exp(l::LogNumber)::ComplexF64
     elseif real(l.s) < 0
         Inf+Inf*im
     elseif real(l.s) == 0 && imag(l.s) == 0
-        log(l.c)
+        exp(l.c)
     else
         NaN + NaN*im
     end
@@ -69,6 +69,12 @@ RiemannDual(x::Dual) = RiemannDual(realpart(x), epsilon(x))
 Dual(x::RiemannDual) = Dual(realpart(x), epsilon(x))
 dual(x::RiemannDual) = Dual(x)
 
+function (x::RiemannDual)(ε) 
+    a,b = realpart(x),epsilon(x)
+    isinf(a) && return b/ε
+    realpart(x) + epsilon(x)*ε
+end
+
 # the relative perturbation
 realpart(r::RiemannDual) = r.realpart
 epsilon(r::RiemannDual) = r.epsilon
@@ -78,13 +84,12 @@ isinf(r::RiemannDual) = isinf(realpart(r))
 in(x::RiemannDual, d::Domain) = realpart(x) ∈ d
 in(x::RiemannDual, d::TypedEndpointsInterval{:closed,:closed}) = realpart(x) ∈ d
 
+
 for f in (:-,)
     @eval $f(x::RiemannDual) = RiemannDual($f(realpart(x)),$f(epsilon(x)))
 end
 
-for f in (:sqrt,)
-    @eval $f(x::RiemannDual) = RiemannDual($f(dual(x)))
-end
+
 
 for f in (:+, :-, :*)
     @eval $f(x::RiemannDual, y::RiemannDual) = RiemannDual($f(dual(x),dual(y)))
@@ -131,7 +136,7 @@ function atanh(z::RiemannDual)
     elseif realpart(z) ≈ -1
         LogNumber(0.5,-log(2)/2  + log(abs(epsilon(z)))/2 + im/2*angle(epsilon(z)))
     else
-        error("Not implemented")
+        error("Not implemented for $z")
     end
 end
 
@@ -141,8 +146,18 @@ end
 
 log1p(z::RiemannDual) = log(z+1)
 
-SingularIntegralEquations.HypergeometricFunctions.speciallog(x::RiemannDual) =
+SingularIntegralEquations.HypergeometricFunctions.speciallog(x::RiemannDual{<:Complex}) =
     (s = sqrt(x); 3(atanh(s)-realpart(s))/realpart(s)^3)
+
+function speciallog(x::RiemannDual{<:Real})
+    if x > 0 
+        s = sqrt(x)
+        3(atanh(s)-s)/s^3
+    elseif x < 0
+        s = sqrt(-x)
+        3(s-atan(s))/s^3
+    end
+end    
 
 
 Base.show(io::IO, x::RiemannDual) = show(io, Dual(x))
