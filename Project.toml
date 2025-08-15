@@ -3,9 +3,8 @@ uuid = "79305c5b-9889-52e9-bdbd-56f883c71fe0"
 version = "0.1.0"
 
 [deps]
-SemiclassicalOrthogonalPolynomials = "291c01f3-23f6-4eb6-aeb0-063a639b53f2"
+PowerNumbers = "7635a310-babe-11e9-2fde-a3dff3ddcf26"
 SingularIntegrals = "d7440221-8b5e-42fc-909c-0567823f424a"
 
 [compat]
-SemiclassicalOrthogonalPolynomials = "0.5.9"
 SingularIntegrals = "0.3.3"
