@@ -3,8 +3,10 @@ uuid = "79305c5b-9889-52e9-bdbd-56f883c71fe0"
 version = "0.1.0"
 
 [deps]
+ClassicalOrthogonalPolynomials = "b30e2e7b-c4ee-47da-9d5f-2c5c27239acd"
 PowerNumbers = "7635a310-babe-11e9-2fde-a3dff3ddcf26"
 SingularIntegrals = "d7440221-8b5e-42fc-909c-0567823f424a"
 
 [compat]
+ClassicalOrthogonalPolynomials = "0.13.9"
 SingularIntegrals = "0.3.3"
