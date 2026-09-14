@@ -1,110 +1,76 @@
 using PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, Test
 
 
-ε = PowerNumber(1, 1)
-w  = LegendreWeight()
-@test stieltjes(w, 2+ε) isa LogNumber
-@test stieltjes(w, 2+ε) ≈ stieltjes(w, 2)
-@test stieltjes(w, 1+ε) == LogNumber(-1, log(2))
+@testset "weights" begin
+    ε = PowerNumber(1, 1)
+    o = LegendreWeight()
+    @test stieltjes(o, 2+ε) isa LogNumber
+    @test stieltjes(o, 2+ε) ≈ stieltjes(o, 2)
+    @test stieltjes(o, 1+ε) == LogNumber(-1, log(2))
 
-let h = 0.0000001
-    @test stieltjes(w, 1+ε)(h) == -log(h) + log(2)
+    h = 1E-10
+    @test stieltjes(o, 1+ε)(h) == -log(h) + log(2)
+
+    w  = ChebyshevTWeight()
+    @test stieltjes(w, 2+ε) isa PowerNumber
+    @test stieltjes(w, 2+ε) ≈ stieltjes(w, 2)
+    @test stieltjes(w, 1+ε) == PowerNumber(π/sqrt(2), -1/2)
+    @test_broken stieltjes(w, 1+ε)+2 == PowerNumber(π/sqrt(2), 2, -1/2, 0) # TODO: This should include constant term. Need to fix in PowerNumbers.jl
 end
 
+@testset "Legendre Cauchy" begin
+    ε = PowerNumber(1, 1)
+    P = Legendre()
+    f = expand(P, exp)
+    h = 1E-10
+    for z in (1+ε, -1-ε, -1 + (1+im)*ε, 1+2ε, -1-2ε, -1 + 2*(1-im)*ε)
+        @test stieltjes(f, z)(h) ≈ stieltjes(f, z(h))
+        @test cauchy(f, z)(h) ≈ cauchy(f, z(h))
+    end
+    for z in (2+ε, 2+im+ε)
+        @test stieltjes(f, 2+ε)(h) ≈ stieltjes(f, 2)
+        @test cauchy(f, 2+ε)(h) ≈ cauchy(f, 2)
+    end
+end
 
-w  = ChebyshevTWeight()
-@test stieltjes(w, 2+ε) isa PowerNumber
-@test_broken stieltjes(w, 2+ε) ≈ stieltjes(w, 2)
-@test stieltjes(w, 1+ε) == PowerNumber(π/sqrt(2), -1/2
-@test stieltjes(w, 1+ε)+2 == PowerNumber(π/sqrt(2), 2, -1/2, 0) # TODO: This should include constant term. Need to fix in PowerNumbers.jl
+@testset "Chebyshev" begin
+    ε = PowerNumber(1, 1)
+    h = 1E-10
+    W = Weighted(ChebyshevT())
+    g = expand(W, x -> exp(x) / sqrt(1-x^2))
+    @test stieltjes(g, 1+ε)(h) ≈ stieltjes(g, 1+h) rtol=1E-5
+end
 
-stieltjes(Legendre(), 2+ε) ## TODO: make work
-stieltjes(Weighted(ChebyshevT()), 2+ε) ## TODO: make work (probably too hard)
-stieltjes(Weighted(ChebyshevT()), 1+ε) ## TODO: Add tests to see if it worked
+@testset "Directed and RiemannDual" begin
+    @test undirected(Directed{false}(RiemannDual(0,-1))) == 0
 
+    @test real(LogNumber(2im,im+1)) == LogNumber(0,1)
+    @test imag(LogNumber(2im,im+1)) == LogNumber(2,1)
+    @test conj(LogNumber(2im,im+1)) == LogNumber(-2im,1-im)
 
-# using ApproxFun, SingularIntegralEquations, DualNumbers, RiemannHilbert, LinearAlgebra, FastTransforms, SpecialFunctions, Test
-# import ApproxFunBase: ArraySpace, pieces, dotu, interlace
-# import RiemannHilbert: RiemannDual, LogNumber, fpstieltjesmatrix!, fpstieltjesmatrix, orientedleftendpoint, orientedrightendpoint, finitepart, fpcauchymatrix, collocationvalues, collocationpoints
-# import SingularIntegralEquations: stieltjesmoment, stieltjesmoment!, undirected, Directed, ⁺, ⁻, istieltjes
-# import SingularIntegralEquations.HypergeometricFunctions: speciallog
+    @test log(Directed{false}(RiemannDual(0,-1))) == LogNumber(1,π*im)
+    @test log(Directed{true}(RiemannDual(0,-1))) == LogNumber(1,-π*im)
 
+    @test log(Directed{false}(RiemannDual(0,-1-eps()*im))) == LogNumber(1,π*im)
+    @test log(Directed{false}(RiemannDual(0,-1+eps()*im))) == LogNumber(1,π*im)
 
-# @testset "RiemannDual" begin
-#     for h in (0.1,0.01), a in (2exp(0.1im),1.1)
-#         @test log(RiemannDual(0,a))(h) ≈ log(h*a)
-#         @test log(RiemannDual(Inf,a))(h) ≈ log(a/h)
-#     end
-
-#     for h in (0.1,0.01), a in (2exp(0.1im),1.1)
-#         @test log1p(RiemannDual(-1,a))(h) ≈ log(h*a)
-#         @test log1p(RiemannDual(Inf,a))(h) ≈ log(a/h)
-#     end
-
-
-#     h = 0.0000001
-#     for z in (RiemannDual(-1,-1), RiemannDual(1,1), RiemannDual(-1,2exp(0.1im)), RiemannDual(1,2exp(0.1im))),
-#             k = 0:1
-#         l = stieltjesjacobimoment(0,0,k,z)
-#         @test l(h) ≈ stieltjesjacobimoment(0,0,k,realpart(z)+epsilon(z)h) atol=1E-5
-#     end
-
-#     h=0.0001
-#     for z in (RiemannDual(1,3exp(0.2im)), RiemannDual(1,0.5exp(-1.3im)),
-#                 RiemannDual(-1,3exp(0.2im)), RiemannDual(-1,0.5exp(-1.3im)),
-#                 RiemannDual(-1,1), RiemannDual(1,-1))
-#         @test atanh(z)(h) ≈  atanh(realpart(z)+epsilon(z)h) atol = 1E-4
-#     end
-
-#     z = RiemannDual(1,-0.25)
-#     h = 0.0000001
-#     @test speciallog(z)(h) ≈ speciallog(realpart(z)+epsilon(z)h) atol=1E-4
-
-#     h = 0.00001
-#     for z in (RiemannDual(-1,-1), RiemannDual(-1,exp(0.1im)), RiemannDual(-1,exp(-0.1im)))
-#         @test stieltjesjacobimoment(0.5,0,0,z)(h) ≈ stieltjesjacobimoment(0.5,0,0,realpart(z)+epsilon(z)h) atol=1E-4
-#     end
-# end
-
-# @testset "Legendre Cauchy" begin
-#     f = Fun(exp,Legendre())
-
-#     h = 0.00001
-#     for z in  (RiemannDual(-1,-1), RiemannDual(-1,1+im), RiemannDual(-1,1-im))
-#         @test cauchy(f, z)(h) ≈ cauchy(f, realpart(z) + epsilon(z)h) atol=1E-4
-#     end
-# end
-
-# @testset "Directed and RiemannDual" begin
-#     @test undirected(Directed{false}(RiemannDual(0,-1))) == 0
-
-#     @test real(LogNumber(2im,im+1)) == LogNumber(0,1)
-#     @test imag(LogNumber(2im,im+1)) == LogNumber(2,1)
-#     @test conj(LogNumber(2im,im+1)) == LogNumber(-2im,1-im)
-
-#     @test log(Directed{false}(RiemannDual(0,-1))) == LogNumber(1,π*im)
-#     @test log(Directed{true}(RiemannDual(0,-1))) == LogNumber(1,-π*im)
-
-#     @test log(Directed{false}(RiemannDual(0,-1-eps()*im))) == LogNumber(1,π*im)
-#     @test log(Directed{false}(RiemannDual(0,-1+eps()*im))) == LogNumber(1,π*im)
-
-#     @test log(Directed{true}(RiemannDual(0,-1-eps()*im))) == LogNumber(1,-π*im)
-#     @test log(Directed{true}(RiemannDual(0,-1+eps()*im))) == LogNumber(1,-π*im)
+    @test log(Directed{true}(RiemannDual(0,-1-eps()*im))) == LogNumber(1,-π*im)
+    @test log(Directed{true}(RiemannDual(0,-1+eps()*im))) == LogNumber(1,-π*im)
 
 
-#     z = Directed{false}(RiemannDual(1,-2))
+    z = Directed{false}(RiemannDual(1,-2))
 
-#     for k=0:1, s=(false,true)
-#         z = Directed{s}(RiemannDual(-1,2))
-#         l = stieltjesmoment(Legendre(),k,z)
-#         h = 0.00000001
-#         @test l(h) ≈ stieltjesmoment(Legendre(),k,-1 + epsilon(z.x)h + (s ? 1 : -1)*eps()*im) atol=1E-5
-#     end
+    for k=0:1, s=(false,true)
+        z = Directed{s}(RiemannDual(-1,2))
+        l = stieltjesmoment(Legendre(),k,z)
+        h = 0.00000001
+        @test l(h) ≈ stieltjesmoment(Legendre(),k,-1 + epsilon(z.x)h + (s ? 1 : -1)*eps()*im) atol=1E-5
+    end
 
 
-#     @test RiemannHilbert.orientedleftendpoint(ChebyshevInterval()) == RiemannDual(-1.0,1)
-#     @test RiemannHilbert.orientedrightendpoint(ChebyshevInterval()) == RiemannDual(1.0,-1)
-# end
+    @test RiemannHilbert.orientedleftendpoint(ChebyshevInterval()) == RiemannDual(-1.0,1)
+    @test RiemannHilbert.orientedrightendpoint(ChebyshevInterval()) == RiemannDual(1.0,-1)
+end
 
 # @testset "Interval FPStieltjes" begin
 #     Γ = ChebyshevInterval()

@@ -1,15 +1,13 @@
 module RiemannHilbert
-# using Base, ApproxFun, SingularIntegralEquations, DualNumbers, LinearAlgebra,
-#         SpecialFunctions, FillArrays, DomainSets, FastTransforms, SparseArrays
+using SingularIntegrals, HypergeometricFunctions
+
+import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
+                >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
+                isinf, in, real, imag
+export ⁺, ⁻, Directed
 
 
-# import DomainSets: UnionDomain, TypedEndpointsInterval
-
-# import FastTransforms: ichebyshevtransform!
-
-
-# import SingularIntegralEquations: stieltjesforward, stieltjesbackward, undirected, Directed, stieltjesmoment!, JacobiQ, istieltjes, ComplexPlane, ℂ,
-#                                     mxa_₂F₁, _₂F₁general, directed_mxa_₂F₁, directed_₂F₁general
+include("directed.jl")
 
 # import ApproxFunBase: mobius, pieces, npieces, piece, BlockInterlacer, interlacer, pieces_npoints,
 #                     ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun,
@@ -17,9 +15,6 @@ module RiemannHilbert
 #                     pieces
 # import ApproxFunOrthogonalPolynomials: PolynomialSpace, recA, recB, recC, IntervalOrSegmentDomain, IntervalOrSegment
 
-# import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
-#                 >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
-#                 isinf, in
 
 # # we need to import all special functions to use Calculus.symbolic_derivatives_1arg
 # # we can't do importall Base as we replace some Base definitions
