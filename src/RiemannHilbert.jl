@@ -1,11 +1,12 @@
 module RiemannHilbert
-using SingularIntegrals, HypergeometricFunctions
+using SingularIntegrals, HypergeometricFunctions, PowerNumbers, RecurrenceRelationshipArrays, IntervalSets
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
                 >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
-                isinf, in, real, imag
-export ⁺, ⁻, Directed
+                isinf, in, real, imag, muladd, conj
+export ⁺, ⁻, Directed, undirected
 
+const IntervalOrSegment = AbstractInterval
 
 include("directed.jl")
 
@@ -13,7 +14,7 @@ include("directed.jl")
 #                     ArraySpace, tocanonical, components_npoints, ScalarFun, VectorFun, MatrixFun,
 #                     dimension, evaluate, prectype, cfstype, Space, SumSpace, spacescompatible,
 #                     pieces
-# import ApproxFunOrthogonalPolynomials: PolynomialSpace, recA, recB, recC, IntervalOrSegmentDomain, IntervalOrSegment
+# import ApproxFunOrthogonalPolynomials: PolynomialSpace, recA, recB, recC, IntervalOrSegment
 
 
 # # we need to import all special functions to use Calculus.symbolic_derivatives_1arg
@@ -138,9 +139,9 @@ include("directed.jl")
 # # stieltjesmatrix(space,space2,n::Integer)=stieltjesmatrix(space,points(space2,n))
 
 
-
-# orientedleftendpoint(d::IntervalOrSegment) = RiemannDual(leftendpoint(d), sign(d))
-# orientedrightendpoint(d::IntervalOrSegment) = RiemannDual(rightendpoint(d), -sign(d))
+intervalsign(d::AbstractInterval) = 1
+orientedleftendpoint(d::IntervalOrSegment) = leftendpoint(d) + intervalsign(d)ϵ
+orientedrightendpoint(d::IntervalOrSegment) = rightendpoint(d) - intervalsign(d)ϵ
 
 
 # # use 2nd kind to include endpoints

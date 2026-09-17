@@ -1,76 +1,89 @@
-using PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, Test
+using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, Test
 
 
 @testset "weights" begin
-    ε = PowerNumber(1, 1)
     o = LegendreWeight()
-    @test stieltjes(o, 2+ε) isa LogNumber
-    @test stieltjes(o, 2+ε) ≈ stieltjes(o, 2)
-    @test stieltjes(o, 1+ε) == LogNumber(-1, log(2))
+    @test stieltjes(o, 2+ϵ) isa LogNumber
+    @test stieltjes(o, 2+ϵ) ≈ stieltjes(o, 2)
+    @test stieltjes(o, 1+ϵ) == LogNumber(-1, log(2))
 
     h = 1E-10
-    @test stieltjes(o, 1+ε)(h) == -log(h) + log(2)
+    @test stieltjes(o, 1+ϵ)(h) == -log(h) + log(2)
 
     w  = ChebyshevTWeight()
-    @test stieltjes(w, 2+ε) isa PowerNumber
-    @test stieltjes(w, 2+ε) ≈ stieltjes(w, 2)
-    @test stieltjes(w, 1+ε) == PowerNumber(π/sqrt(2), -1/2)
-    @test_broken stieltjes(w, 1+ε)+2 == PowerNumber(π/sqrt(2), 2, -1/2, 0) # TODO: This should include constant term. Need to fix in PowerNumbers.jl
+    @test stieltjes(w, 2+ϵ) isa PowerNumber
+    @test stieltjes(w, 2+ϵ) ≈ stieltjes(w, 2)
+    @test stieltjes(w, 1+ϵ) == PowerNumber(π/sqrt(2), -1/2)
+    @test_broken stieltjes(w, 1+ϵ)+2 == PowerNumber(π/sqrt(2), 2, -1/2, 0) # TODO: This should include constant term. Need to fix in PowerNumbers.jl
 end
 
 @testset "Legendre Cauchy" begin
-    ε = PowerNumber(1, 1)
+    ϵ = PowerNumber(1, 1)
     P = Legendre()
     f = expand(P, exp)
     h = 1E-10
-    for z in (1+ε, -1-ε, -1 + (1+im)*ε, 1+2ε, -1-2ε, -1 + 2*(1-im)*ε)
+    for z in (1+ϵ, -1-ϵ, -1 + (1+im)*ϵ, 1+2ϵ, -1-2ϵ, -1 + 2*(1-im)*ϵ)
         @test stieltjes(f, z)(h) ≈ stieltjes(f, z(h))
         @test cauchy(f, z)(h) ≈ cauchy(f, z(h))
     end
-    for z in (2+ε, 2+im+ε)
-        @test stieltjes(f, 2+ε)(h) ≈ stieltjes(f, 2)
-        @test cauchy(f, 2+ε)(h) ≈ cauchy(f, 2)
+    for z in (2+ϵ, 2+im+ϵ)
+        @test stieltjes(f, 2+ϵ)(h) ≈ stieltjes(f, 2)
+        @test cauchy(f, 2+ϵ)(h) ≈ cauchy(f, 2)
     end
 end
 
 @testset "Chebyshev" begin
-    ε = PowerNumber(1, 1)
     h = 1E-10
     W = Weighted(ChebyshevT())
     g = expand(W, x -> exp(x) / sqrt(1-x^2))
-    @test stieltjes(g, 1+ε)(h) ≈ stieltjes(g, 1+h) rtol=1E-5
+    @test stieltjes(g, 1+ϵ)(h) ≈ stieltjes(g, 1+h) rtol=1E-5
 end
 
-@testset "Directed and RiemannDual" begin
-    @test undirected(Directed{false}(RiemannDual(0,-1))) == 0
+@testset "Directed and PowerNumber" begin
+    @test undirected(Directed{false}(ϵ)) == 0
 
     @test real(LogNumber(2im,im+1)) == LogNumber(0,1)
     @test imag(LogNumber(2im,im+1)) == LogNumber(2,1)
     @test conj(LogNumber(2im,im+1)) == LogNumber(-2im,1-im)
 
-    @test log(Directed{false}(RiemannDual(0,-1))) == LogNumber(1,π*im)
-    @test log(Directed{true}(RiemannDual(0,-1))) == LogNumber(1,-π*im)
+    @test log(Directed{false}(-ϵ)) == LogNumber(1,π*im)
+    @test log(Directed{true}(-ϵ)) == LogNumber(1,-π*im)
 
-    @test log(Directed{false}(RiemannDual(0,-1-eps()*im))) == LogNumber(1,π*im)
-    @test log(Directed{false}(RiemannDual(0,-1+eps()*im))) == LogNumber(1,π*im)
+    @test log(Directed{false}((-1-eps()*im)ϵ)) ≈ LogNumber(1,π*im)
+    @test log(Directed{false}((-1+eps()*im)ϵ)) ≈ LogNumber(1,π*im)
 
-    @test log(Directed{true}(RiemannDual(0,-1-eps()*im))) == LogNumber(1,-π*im)
-    @test log(Directed{true}(RiemannDual(0,-1+eps()*im))) == LogNumber(1,-π*im)
+    @test log(Directed{true}((-1-eps()*im)ϵ)) ≈ LogNumber(1,-π*im)
+    @test log(Directed{true}((-1+eps()*im)ϵ)) ≈ LogNumber(1,-π*im)
 
 
-    z = Directed{false}(RiemannDual(1,-2))
+    z = Directed{false}(1-2ϵ)
 
-    for k=0:1, s=(false,true)
-        z = Directed{s}(RiemannDual(-1,2))
-        l = stieltjesmoment(Legendre(),k,z)
+    for k = 1:2, s = (false,true)
+        z = Directed{s}(-1+2ϵ)
+        l = stieltjes(Legendre()[:,k], z)
         h = 0.00000001
-        @test l(h) ≈ stieltjesmoment(Legendre(),k,-1 + epsilon(z.x)h + (s ? 1 : -1)*eps()*im) atol=1E-5
+        @test l(h) ≈ stieltjes(Legendre()[:,k], -1 + (z.x.B)h + (s ? 1 : -1)*eps()*im) atol=1E-5
     end
 
 
-    @test RiemannHilbert.orientedleftendpoint(ChebyshevInterval()) == RiemannDual(-1.0,1)
-    @test RiemannHilbert.orientedrightendpoint(ChebyshevInterval()) == RiemannDual(1.0,-1)
+    @test RiemannHilbert.orientedleftendpoint(ChebyshevInterval()) ≡ -1.0+ϵ
+    @test RiemannHilbert.orientedrightendpoint(ChebyshevInterval()) ≡ 1.0-ϵ
 end
+
+
+# @testset "finitepart stieltjes" begin
+#     f = Fun(exp,Legendre())
+#     f1 = Fun(exp,Legendre(-1..0))
+#     f2 = Fun(exp,Legendre(0..1))
+#     fp = f1+f2
+
+#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,RiemannDual(0.0,-im)) + stieltjes(f2,RiemannDual(0.0,-im)))
+#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,RiemannDual(0.0,exp(-0.1im))) + stieltjes(f2,RiemannDual(0.0,exp(-0.1im))))
+#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,Directed{false}(RiemannDual(0.0,-1.0))) + stieltjes(f2,RiemannDual(0.0,-1.0)))
+
+#     @test stieltjes(fp,RiemannDual(0.0,-im)) ≈ stieltjes(f1,RiemannDual(0.0,-im)) + stieltjes(f2,RiemannDual(0.0,-im))
+#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(fp,RiemannDual(0.0,-im)))
+# end
 
 # @testset "Interval FPStieltjes" begin
 #     Γ = ChebyshevInterval()
@@ -107,20 +120,6 @@ end
 #     @test norm(C) ≤ 200
 #     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
 #     @test c(0.5) ≈ stieltjes(f,0.5⁻)
-# end
-
-# @testset "finitepart stieltjes" begin
-#     f = Fun(exp,Legendre())
-#     f1 = Fun(exp,Legendre(-1..0))
-#     f2 = Fun(exp,Legendre(0..1))
-#     fp = f1+f2
-
-#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,RiemannDual(0.0,-im)) + stieltjes(f2,RiemannDual(0.0,-im)))
-#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,RiemannDual(0.0,exp(-0.1im))) + stieltjes(f2,RiemannDual(0.0,exp(-0.1im))))
-#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,Directed{false}(RiemannDual(0.0,-1.0))) + stieltjes(f2,RiemannDual(0.0,-1.0)))
-
-#     @test stieltjes(fp,RiemannDual(0.0,-im)) ≈ stieltjes(f1,RiemannDual(0.0,-im)) + stieltjes(f2,RiemannDual(0.0,-im))
-#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(fp,RiemannDual(0.0,-im)))
 # end
 
 # @testset "Two interval" begin
