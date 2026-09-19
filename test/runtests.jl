@@ -1,4 +1,5 @@
 using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, Test
+import PowerNumbers: logpart, realpart
 
 
 @testset "weights" begin
@@ -14,7 +15,7 @@ using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolyno
     @test stieltjes(w, 2+ϵ) isa PowerNumber
     @test stieltjes(w, 2+ϵ) ≈ stieltjes(w, 2)
     @test stieltjes(w, 1+ϵ) == PowerNumber(π/sqrt(2), -1/2)
-    @test_broken stieltjes(w, 1+ϵ)+2 == PowerNumber(π/sqrt(2), 2, -1/2, 0) # TODO: This should include constant term. Need to fix in PowerNumbers.jl
+    @test stieltjes(w, 1+ϵ)+2 == PowerNumber(π/sqrt(2), 2, -1/2, 0)
 end
 
 @testset "Legendre Cauchy" begin
@@ -71,19 +72,32 @@ end
 end
 
 
-# @testset "finitepart stieltjes" begin
-#     f = Fun(exp,Legendre())
-#     f1 = Fun(exp,Legendre(-1..0))
-#     f2 = Fun(exp,Legendre(0..1))
-#     fp = f1+f2
+@testset "finitepart stieltjes" begin
+    f  = expand(Legendre(), exp)
+    f1 = expand(legendre(-1..0), exp)
+    f2 = expand(legendre(0..1), exp)
 
-#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,RiemannDual(0.0,-im)) + stieltjes(f2,RiemannDual(0.0,-im)))
-#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,RiemannDual(0.0,exp(-0.1im))) + stieltjes(f2,RiemannDual(0.0,exp(-0.1im))))
-#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(f1,Directed{false}(RiemannDual(0.0,-1.0))) + stieltjes(f2,RiemannDual(0.0,-1.0)))
+    # Each half-interval transform has a log singularity at the shared endpoint 0. Their
+    # singular parts cancel, and the finite parts add up to the transform over (-1,1)
+    # approached from below.
+    for z in (-im*ϵ, exp(-0.1im)*ϵ)
+        s = stieltjes(f1, z) + stieltjes(f2, z)
+        @test logpart(s) ≈ 0 atol=1E-12
+        @test stieltjes(f, 0.0⁻) ≈ realpart(s)
+    end
 
-#     @test stieltjes(fp,RiemannDual(0.0,-im)) ≈ stieltjes(f1,RiemannDual(0.0,-im)) + stieltjes(f2,RiemannDual(0.0,-im))
-#     @test stieltjes(f,0.0⁻) ≈ finitepart(stieltjes(fp,RiemannDual(0.0,-im)))
-# end
+    # approaching 0 along the real axis instead, so f1 needs the branch cut orientation
+    s = stieltjes(f1, Directed{false}(-ϵ)) + stieltjes(f2, -ϵ)
+    @test logpart(s) ≈ 0 atol=1E-12
+    @test stieltjes(f, 0.0⁻) ≈ realpart(s)
+
+    # the same, on the piecewise basis rather than piece by piece
+    fp = expand(PiecewiseInterlace(legendre(-1..0), legendre(0..1)), exp)
+    # TODO: `dot` over the interlaced infinite coefficient vector divides by ℵ₀ once the
+    # eltype is a LogNumber ("Cannot multiply 0 * ℵ₀"); needs fixing upstream.
+    @test_broken stieltjes(fp, -im*ϵ) ≈ stieltjes(f1, -im*ϵ) + stieltjes(f2, -im*ϵ)
+    @test_broken stieltjes(f, 0.0⁻) ≈ realpart(stieltjes(fp, -im*ϵ))
+end
 
 # @testset "Interval FPStieltjes" begin
 #     Γ = ChebyshevInterval()

@@ -4,6 +4,7 @@ version = "0.2.0"
 
 [deps]
 ClassicalOrthogonalPolynomials = "b30e2e7b-c4ee-47da-9d5f-2c5c27239acd"
+ContinuumArrays = "7ae1f121-cc2c-504b-ac30-9b923412ae5c"
 HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 PowerNumbers = "7635a310-babe-11e9-2fde-a3dff3ddcf26"
@@ -11,6 +12,8 @@ RecurrenceRelationshipArrays = "b889d2dc-af3c-4820-88a8-238fa91d3518"
 SingularIntegrals = "d7440221-8b5e-42fc-909c-0567823f424a"
 
 [sources]
+ClassicalOrthogonalPolynomials = {path = "/Users/solver/Projects/ClassicalOrthogonalPolynomials.jl/"}
+ContinuumArrays = {path = "/Users/solver/Projects/ContinuumArrays.jl/"}
 PowerNumbers = {path = "/Users/solver/Projects/PowerNumbers.jl"}
 SingularIntegrals = {path = "/Users/solver/Projects/SingularIntegrals.jl/"}
 

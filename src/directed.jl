@@ -120,5 +120,7 @@ _₂F₁general(a::Number, b::Number, c::Number, z::Directed) = directed_₂F₁
 
 
 
-# work around for SIEs
-RecurrenceRelationshipArrays.RecurrenceArray(z::Directed, (A,B,C), data::AbstractVector) = RecurrenceArray(undirected(z), (A,B,C), data)
+# work around for SIEs: the recurrence itself is an ordinary scalar recurrence, so the
+# orientation is dropped from the seed data as well as from the point
+RecurrenceRelationshipArrays.RecurrenceArray(z::Directed, (A,B,C), data::AbstractVector) =
+    RecurrenceArray(undirected(z), (A,B,C), undirected.(data))
