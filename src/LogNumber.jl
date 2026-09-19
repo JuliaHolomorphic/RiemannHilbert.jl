@@ -57,7 +57,7 @@ function exp(l::LogNumber)::ComplexF64
     end
 end
 
-# This is a relative version of dual number, in the sense that its realpart*(1+epsilon)
+# This is a relative version of dual number, in the sense that its realpart*(1+epsilon*ε)
 struct RiemannDual{T} <: Number
     realpart::T
     epsilon::T
@@ -141,7 +141,7 @@ end
 
 log1p(z::RiemannDual) = log(z+1)
 
-SingularIntegralEquations.HypergeometricFunctions.speciallog(x::RiemannDual) =
+HypergeometricFunctions.speciallog(x::RiemannDual) =
     (s = sqrt(x); 3(atanh(s)-realpart(s))/realpart(s)^3)
 
 
