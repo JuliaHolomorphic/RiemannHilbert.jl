@@ -19,7 +19,6 @@ import PowerNumbers: logpart, realpart
 end
 
 @testset "Legendre Cauchy" begin
-    ϵ = PowerNumber(1, 1)
     P = Legendre()
     f = expand(P, exp)
     h = 1E-10
@@ -93,17 +92,17 @@ end
 
     # the same, on the piecewise basis rather than piece by piece
     fp = expand(PiecewiseInterlace(legendre(-1..0), legendre(0..1)), exp)
-    # TODO: `dot` over the interlaced infinite coefficient vector divides by ℵ₀ once the
-    # eltype is a LogNumber ("Cannot multiply 0 * ℵ₀"); needs fixing upstream.
-    @test_broken stieltjes(fp, -im*ϵ) ≈ stieltjes(f1, -im*ϵ) + stieltjes(f2, -im*ϵ)
-    @test_broken stieltjes(f, 0.0⁻) ≈ realpart(stieltjes(fp, -im*ϵ))
+    # atol because the log parts cancel to zero: comparing two roundoff-level values of
+    # opposite sign with a relative tolerance can never succeed
+    @test stieltjes(fp, -im*ϵ) ≈ stieltjes(f1, -im*ϵ) + stieltjes(f2, -im*ϵ) atol=1E-12
+    @test stieltjes(f, 0.0⁻) ≈ realpart(stieltjes(fp, -im*ϵ))
 end
 
-# @testset "Interval FPStieltjes" begin
-#     Γ = ChebyshevInterval()
-#     f = Fun(x->exp(-40(x-0.1)^2), Legendre())
-#     C = Array{ComplexF64}(undef, ncoefficients(f), ncoefficients(f))
-#     d = Segment(im,2im)
+@testset "Interval FPStieltjes" begin
+    Γ = ChebyshevInterval()
+    f = expand(exp(-40(x-0.1)^2) for x in Γ)
+    # C = Array{ComplexF64}(undef, ncoefficients(f), ncoefficients(f))
+    # d = Segment(im,2im)
 
 #     fpstieltjesmatrix!(C, space(f), d)
 #     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
@@ -134,7 +133,7 @@ end
 #     @test norm(C) ≤ 200
 #     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
 #     @test c(0.5) ≈ stieltjes(f,0.5⁻)
-# end
+end
 
 # @testset "Two interval" begin
 #     @testset "-1..0 and 0..1" begin
