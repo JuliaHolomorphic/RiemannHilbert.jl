@@ -1,5 +1,112 @@
-using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, Test
+using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, Statistics, Test
 import PowerNumbers: logpart, realpart
+import IntervalSets: leftendpoint, rightendpoint, endpoints, Interval
+import RiemannHilbert: intervalsign, orientedleftendpoint, orientedrightendpoint
+
+@testset "Segment" begin
+    @testset "construction and conversion" begin
+        @test Segment(1,2) === Segment{Float64}(1.0,2.0)
+        @test Segment(1,2.0) === Segment(1.0,2.0)
+        @test Segment(im,2im) === Segment{ComplexF64}(im,2im)
+        @test Segment(1,2im) === Segment{ComplexF64}(1,2im)
+        @test Segment(0..1) === Segment(0.0,1.0)
+        @test Segment(ChebyshevInterval()) === Segment(-1.0,1.0)
+        @test convert(Interval, Segment(2,1)) === 1.0..2.0
+        @test Interval(Segment(1,2)) === 1.0..2.0
+        @test convert(Segment{ComplexF64}, Segment(1,2)) === Segment(1.0+0im,2.0+0im)
+        @test convert(Segment{Float64}, 0..1) === Segment(0.0,1.0)
+    end
+
+    @testset "information" begin
+        d = Segment(1,2)
+        @test leftendpoint(d) == 1 && rightendpoint(d) == 2
+        @test endpoints(d) === (1.0,2.0)
+        @test minimum(Segment(2,1)) == 1 && maximum(Segment(2,1)) == 2
+        @test !isempty(d)
+        @test isempty(Segment(1,1))
+        @test isempty(Segment(0.0im,0.0im)) # eps of a complex segment is the eps of its precision
+        @test Segment(1,2) ⊆ Segment(0,3)
+        @test !(Segment(1,4) ⊆ Segment(0,3))
+        @test arclength(d) == 1
+        @test arclength(0..1) == 1
+        @test arclength(Segment(0,1+im)) ≈ sqrt(2)
+        @test complexlength(Segment(0,1+im)) == 1+im
+        @test mean(d) == 1.5
+        @test angle(Segment(0,1im)) ≈ π/2
+        @test sign(Segment(0,1im)) == im
+    end
+
+    @testset "in" begin
+        @test 0.5 ∈ Segment(0,1)
+        @test 0 ∈ Segment(0,1)
+        @test !(1.5 ∈ Segment(0,1))
+        @test !(0.5im ∈ Segment(0,1))
+        @test 0.5im ∈ Segment(0,1im)
+        @test !(0.5 ∈ Segment(0,1im))
+    end
+
+    @testset "equality" begin
+        @test Segment(1,2) == Segment(1,2)
+        @test Segment(1,2) != Segment(2,1)
+        @test Segment(1,2) == 1..2
+        @test 1..2 == Segment(1,2)
+        @test Segment(1,2) ≈ 1..2
+        @test Segment(1,2+1E-14) ≈ Segment(1,2)
+    end
+
+    @testset "algebra" begin
+        d = Segment(1,2)
+        @test 2d === Segment(2.0,4.0)
+        @test d*2 === Segment(2.0,4.0)
+        @test d+1 === Segment(2.0,3.0)
+        @test 1-d === Segment(0.0,-1.0)
+        @test d/2 === Segment(0.5,1.0)
+        @test sqrt(Segment(1,4)) === Segment(1.0,2.0)
+        @test Segment(1,2).^2 === Segment(1.0,4.0)
+        @test Segment(-1,2).^2 === Segment(0.0,4.0) # a segment straddling 0 squares to [0,max]
+        @test Segment(2,-1).^2 === Segment(4.0,0.0)
+        @test 2 .^ Segment(1,2) === Segment(2.0,4.0)
+        @test Segment(1,2) + Segment(2,3) === Segment(3.0,5.0)
+    end
+
+    @testset "orientation" begin
+        @test reverseorientation(Segment(1,2)) === Segment(2.0,1.0)
+        @test reverseorientation(0..1) === Segment(1.0,0.0)
+        @test intervalsign(Segment(1,2)) == 1
+        @test intervalsign(Segment(0,1im)) == im
+        @test orientedleftendpoint(Segment(1,2)) == 1+ϵ
+        @test orientedrightendpoint(Segment(1,2)) == 2-ϵ
+        @test orientedleftendpoint(Segment(0,1im)) == im*ϵ
+    end
+
+    @testset "canonical maps" begin
+        d = Segment(1,2)
+        @test mobius(d, 1.5) == 0
+        @test tocanonical(d, 1) == -1
+        @test tocanonical(d, 2) == 1
+        @test tocanonicalD(d, 1.5) == 2
+        @test fromcanonical(d, 0) == 1.5
+        @test fromcanonicalD(d, 0) == 0.5
+        @test fromcanonical(d, tocanonical(d, 1.25)) ≈ 1.25
+        c = Segment(0,1im)
+        @test tocanonical(c, 0.5im) ≈ 0
+        @test fromcanonical(c, 1) ≈ 1im
+        @test tocanonical(ChebyshevInterval(), 0.3) == 0.3
+        @test fromcanonical(ChebyshevInterval(), 0.3) == 0.3
+        @test tocanonicalD(ChebyshevInterval(), 0.3) == 1
+        @test fromcanonicalD(ChebyshevInterval(), 0.3) == 1
+    end
+
+    @testset "set operations and sorting" begin
+        @test Segment(0,2) ∩ Segment(1,3) == 1..2
+        @test Segment(0,2) ∩ (1..3) == 1..2
+        @test (0..2) ∩ Segment(1,3) == 1..2
+        @test setdiff(Segment(0,3), Segment(1,2)) == setdiff(0..3, 1..2)
+        @test sort([Segment(2,3), Segment(0,1)]) == [Segment(0,1), Segment(2,3)]
+        @test Segment(0,1) < 2
+        @test 0 < Segment(1,2)
+    end
+end
 
 
 @testset "weights" begin
@@ -127,12 +234,13 @@ end
 #     @test c(0.5) ≈ stieltjes(f,0.5⁻)
 
 
-#     d = Segment(0,1)
-#     f = Fun(x->exp(-200(x-0.6)^2), Legendre(d))
-#     C = fpstieltjesmatrix(space(f), ncoefficients(f), ncoefficients(f))
-#     @test norm(C) ≤ 200
-#     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
-#     @test c(0.5) ≈ stieltjes(f,0.5⁻)
+    # d = 0..1
+    # f = expand(exp(-200(x-0.6)^2) for x in d)
+    # n = last(colsupport(coefficients(f)))
+    # C = fpstieltjesmatrix(basis(f), n, n)
+    # @test norm(C) ≤ 200
+    # c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
+    # @test c(0.5) ≈ stieltjes(f,0.5⁻)
 end
 
 # @testset "Two interval" begin

@@ -1,13 +1,21 @@
 module RiemannHilbert
-using SingularIntegrals, HypergeometricFunctions, PowerNumbers, RecurrenceRelationshipArrays, IntervalSets
+using SingularIntegrals, HypergeometricFunctions, PowerNumbers, RecurrenceRelationshipArrays,
+        IntervalSets, DomainSets, LinearAlgebra, Statistics
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
                 >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
-                isinf, in, real, imag, muladd, conj
-export ⁺, ⁻, Directed, undirected
+                isinf, in, real, imag, muladd, conj, isempty, issubset, isapprox, isless,
+                intersect, setdiff, minimum, maximum, angle, sign, sqrt
+import Base.Broadcast: broadcasted
+import IntervalSets: leftendpoint, rightendpoint, endpoints, width, Interval
+import DomainSets: Domain, ChebyshevInterval, prectype
+import LinearAlgebra: norm
+import Statistics: mean
+export ⁺, ⁻, Directed, undirected, Segment,
+        mobius, tocanonical, tocanonicalD, fromcanonical, fromcanonicalD,
+        arclength, complexlength, reverseorientation
 
-const IntervalOrSegment = AbstractInterval
-
+include("Segment.jl")
 include("directed.jl")
 
 # import ApproxFunBase: mobius, pieces, npieces, piece, BlockInterlacer, interlacer, pieces_npoints,
@@ -44,102 +52,8 @@ include("directed.jl")
 
 # export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes, KdV
 
-# include("LogNumber.jl")
-
-
-
-# function component_indices(it::BlockInterlacer, N::Int, kr::UnitRange)
-#     ret = Vector{Int}()
-#     ind = 1
-#     k_end = last(kr)
-#     for (M,j) in it
-#         N == M && j > k_end && return ret
-#         N == M && j ∈ kr && push!(ret, ind)
-#         ind += 1
-#     end
-#     ret
-# end
-
-
-# function component_indices(it::BlockInterlacer{NTuple{N,<:AbstractFill{Bool}}}, k::Int, kr::AbstractUnitRange) where N
-#     b = length(it.blocks)
-#     k + (first(kr)-1)*b:b:k + (last(kr)-1)*b
-# end
-
-# component_indices(sp::Space, k...) = component_indices(interlacer(sp), k...)
-
-# # # function fpstieltjes(f::Fun,z::Dual)
-# # #     x = mobius(domain(f),z)
-# # #     if !isinf(mobius(domain(f),Inf))
-# # #         error("Not implemented")
-# # #     end
-# # #     cfs = coefficients(f,Chebyshev)
-# # #     if realpart(x) ≈ 1
-# # #         c = -(log(dualpart(x))-log(2)) * sum(cfs)
-# # #         r = 0.0
-# # #         for k=2:2:length(cfs)-1
-# # #             r += 1/(k-1)
-# # #             c += -r*4*cfs[k+1]
-# # #         end
-# # #         r = 1.0
-# # #         for k=1:2:length(cfs)-1
-# # #             r += 1/(k-2)
-# # #             c += -(r+1/(2k))*4*cfs[k+1]
-# # #         end
-# # #         c
-# # #     elseif realpart(x) ≈ -1
-# # #         v = -(log(-dualpart(x))-log(2))
-# # #         if !isempty(cfs)
-# # #             c = -v*cfs[1]
-# # #         end
-# # #         r = 0.0
-# # #         for k=2:2:length(cfs)-1
-# # #             r += 1/(k-1)
-# # #             c += r*4*cfs[k+1]
-# # #             c += -v*cfs[k+1]
-# # #         end
-# # #         r = 1.0
-# # #         for k=1:2:length(cfs)-1
-# # #             r += 1/(k-2)
-# # #             c += -(r+1/(2k))*4*cfs[k+1]
-# # #             c += v*cfs[k+1]
-# # #         end
-# # #         c
-# # #     else
-# # #         error("Not implemented")
-# # #     end
-# # # end
-# # #
-# # # fpcauchy(x...) = fpstieltjes(x...)/(-2π*im)
-# #
-# #
-# #
-# # function stieltjesmatrix(space,pts::Vector,s::Bool)
-# #     n=length(pts)
-# #     C=Array(ComplexF64,n,n)
-# #     for k=1:n
-# #          C[k,:] = stieltjesforward(s,space,n,pts[k])
-# #     end
-# #     C
-# # end
-# #
-# # function stieltjesmatrix(space,pts::Vector)
-# #     n=length(pts)
-# #     C=zeros(ComplexF64,n,n)
-# #     for k=1:n
-# #         cfs = stieltjesbackward(space,pts[k])
-# #         C[k,1:min(length(cfs),n)] = cfs
-# #     end
-# #
-# #     C
-# # end
-
-
-# # stieltjesmatrix(space,n::Integer,s::Bool)=stieltjesmatrix(space,points(space,n),s)
-# # stieltjesmatrix(space,space2,n::Integer)=stieltjesmatrix(space,points(space2,n))
-
-
 intervalsign(d::AbstractInterval) = 1
+intervalsign(d::AbstractSegment) = sign(d)
 orientedleftendpoint(d::IntervalOrSegment) = leftendpoint(d) + intervalsign(d)ϵ
 orientedrightendpoint(d::IntervalOrSegment) = rightendpoint(d) - intervalsign(d)ϵ
 
@@ -168,72 +82,6 @@ orientedrightendpoint(d::IntervalOrSegment) = rightendpoint(d) - intervalsign(d)
 # end
 
 # collocationvalues(f::Fun{<:PiecewiseSpace}, n) = vcat(collocationvalues.(components(f), pieces_npoints(domain(f),n))...)
-
-# function evaluationmatrix!(E, sp::PolynomialSpace, x)
-#     x .= real(tocanonical.(Ref(sp), x))
-
-#     E[:,1] .= 1
-#     E[:,2] .= (recA(Float64,sp,0) .* x .+ recB(Float64,sp,0)) .* view(E,:,1)
-#     for j = 3:size(E,2)
-#         E[:,j] .= (recA(Float64,sp,j-2) .* x .+ recB(Float64,sp,j-2)) .* view(E,:,j-1) .- recC(Float64,sp,j-2).*view(E,:,j-2)
-#     end
-#     E
-# end
-
-
-# evaluationmatrix!(E, sp::PolynomialSpace) =
-#     evaluationmatrix!(E, sp, collocationpoints(sp, size(E,1)))
-
-# evaluationmatrix(sp::PolynomialSpace, x, n) =
-#     evaluationmatrix!(Array{Float64}(undef, length(x), n), sp,copy(x))
-
-
-# function evaluationmatrix!(C, sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})
-#     N, M = length(ns), length(ms)
-#     @assert N == M == npieces(sp)
-#     n, m = sum(ns), sum(ms)
-#     @assert size(C) == (n,m)
-
-#     C .= 0
-
-#     for J = 1:M
-#         jr = component_indices(sp, J, 1:ms[J])
-#         k_start = sum(view(ns,1:J-1))+1
-#         kr = k_start:k_start+ns[J]-1
-#         evaluationmatrix!(view(C, kr, jr), component(sp, J))
-#     end
-
-#     C
-# end
-
-
-# function evaluationmatrix!(C, sp::ArraySpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})
-#     @assert length(ns) == length(ms) == length(sp)
-#     N = length(ns)
-
-#     n, m = sum(ns), sum(ms)
-#     @assert size(C) == (n,m)
-
-#     C .= 0
-
-#     for J = 1:N
-#         jr = component_indices(sp, J, 1:ms[J]) ∩ (1:m)
-#         k_start = sum(view(ns,1:J-1))+1
-#         kr = k_start:k_start+ns[J]-1
-#         evaluationmatrix!(view(C, kr, jr), sp[J])
-#     end
-
-#     C
-# end
-
-# evaluationmatrix!(C, sp::PiecewiseSpace) =
-#     evaluationmatrix!(C, sp, pieces_npoints(sp, size(C,1)), pieces_npoints(sp, size(C,2)))
-
-# evaluationmatrix!(C, sp::ArraySpace) =
-#     evaluationmatrix!(C, sp, components_npoints(sp, size(C,1)), components_npoints(sp, size(C,2)))
-
-
-# evaluationmatrix(sp::Space, n::Int) = evaluationmatrix!(Array{Float64}(undef,n,n), sp)
 
 # fprightstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedrightendpoint(domain(sp))), finitepart)
 # fpleftstieltjesmoment!(V, sp) = stieltjesmoment!(V, sp, Directed{false}(orientedleftendpoint(domain(sp))), finitepart)
