@@ -1,7 +1,7 @@
-using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, Statistics, Test
+using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, ContinuumArrays, Statistics, Test
 import PowerNumbers: logpart, realpart
 import IntervalSets: leftendpoint, rightendpoint, endpoints, Interval
-import RiemannHilbert: intervalsign, orientedleftendpoint, orientedrightendpoint
+import RiemannHilbert: intervalsign, orientedleftendpoint, orientedrightendpoint, fpstieltjesmatrix
 
 @testset "Segment" begin
     @testset "construction and conversion" begin
@@ -229,40 +229,34 @@ end
 
     h = 1E-10
     
-    @test map(l -> l(h), stieltjes(Legendre(), (-1) * ⁻)[1:100]) ≈ stieltjes(Legendre(), -1-im*h)[1:100] atol=100h
-    # C = Array{ComplexF64}(undef, ncoefficients(f), ncoefficients(f))
-    # d = Segment(im,2im)
+    @test map(l -> l(h), stieltjes(Legendre(), (-1+ϵ) * ⁻)[1:100]) ≈ stieltjes(Legendre(), -1+h-im*h^2)[1:100] atol=1E-4
 
-#     fpstieltjesmatrix!(C, space(f), d)
-#     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
-#     @test c(1.5im) ≈ stieltjes(f,1.5im)
+    n = 100
+    r = Segment(im,2im)
+    @test fpstieltjesmatrix((n,n), basis(f), r) * coefficients(f)[1:n] ≈ stieltjes(f, collocationpoints(r, n))
 
-#     d = Segment(-1,-1+im)
-#     fpstieltjesmatrix!(C, space(f), d)
-#     @test norm(C) ≤ 100
-#     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
-#     @test c(-1+0.5im) ≈ stieltjes(f,-1+0.5im)
+    r = Segment(-1,-1+im)
+    C = fpstieltjesmatrix((n,n), basis(f), r)
+    @test (C * coefficients(f)[1:n]) ≈ stieltjes(f, [-1+eps()im; collocationpoints(r, n)[2:end]])
+    @test norm(C) ≤ 100
 
-#     d = Segment(1,1+im)
-#     fpstieltjesmatrix!(C, space(f), d)
-#     @test norm(C) ≤ 200
-#     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
-#     @test c(1+0.5im) ≈ stieltjes(f,1+0.5im)
+    r = Segment(1,1+im)
+    C = fpstieltjesmatrix((n,n), basis(f), r)
+    @test (C * coefficients(f)[1:n]) ≈ stieltjes(f, [1+eps()im; collocationpoints(r, n)[2:end]])
+    @test norm(C) ≤ 100
 
-#     d = ChebyshevInterval()
-#     fpstieltjesmatrix!(C, space(f), d)
-#     @test norm(C) ≤ 200
-#     c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
-#     @test c(0.5) ≈ stieltjes(f,0.5⁻)
+    r = d
+    C = fpstieltjesmatrix((n,n), basis(f), r)
+    @test (C * coefficients(f)[1:n]) ≈ stieltjes(f, collocationpoints(r, n) .- eps()*im)
+    @test norm(C) ≤ 200
+    
 
-
-    # d = 0..1
-    # f = expand(exp(-200(x-0.6)^2) for x in d)
-    # n = last(colsupport(coefficients(f)))
-    # C = fpstieltjesmatrix(basis(f), n, n)
-    # @test norm(C) ≤ 200
-    # c = Fun(d, chebyshevtransform(C*coefficients(f); kind=2))
-    # @test c(0.5) ≈ stieltjes(f,0.5⁻)
+    d = 0..1
+    f = expand(exp(-200(x-0.6)^2) for x in d)
+    C = fpstieltjesmatrix((n,n), basis(f))
+    @test norm(C) ≤ 200
+    c = C*coefficients(f)[1:n]
+    @test c ≈ stieltjes(f, collocationpoints(d, n) .- eps()*im)
 end
 
 # @testset "Two interval" begin

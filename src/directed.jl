@@ -12,10 +12,11 @@ end
 
 Directed{s}(x) where {s} = Directed{s,eltype(x)}(x)
 
-convert(::Type{Directed{s,T}},x::Directed{s}) where {s,T} = Directed{s,T}(T(x.x))
-convert(::Type{Directed{s,T}},x::T) where {s,T} = Directed{s,T}(x)
-convert(::Type{Directed{s,T}},x::Real) where {s,T} = Directed{s,T}(T(x))
-convert(::Type{Directed{s,T}},x::Complex) where {s,T} = Directed{s,T}(T(x))
+convert(::Type{Directed{s,T}}, x::Directed{s}) where {s,T} = Directed{s,T}(T(x.x))
+convert(::Type{Directed{s,T}}, x::T) where {s,T} = Directed{s,T}(x)
+convert(::Type{Directed{s,T}}, x::Real) where {s,T} = Directed{s,T}(T(x))
+convert(::Type{Directed{s,T}}, x::Complex) where {s,T} = Directed{s,T}(T(x))
+convert(::Type{T}, x::Directed{s,T}) where {T<:Number,s} = x.x
 
 const ⁺ = Directed{true}(true)
 const ⁻ = Directed{false}(true)
@@ -127,3 +128,7 @@ _₂F₁general(a::Number, b::Number, c::Number, z::Directed) = directed_₂F₁
 # orientation is dropped from the seed data as well as from the point
 RecurrenceRelationshipArrays.RecurrenceArray(z::Directed, (A,B,C), data::AbstractVector) =
     RecurrenceArray(undirected(z), (A,B,C), undirected.(data))
+
+
+RecurrenceRelationshipArrays.RecurrenceArray(z::AbstractVector{<:Directed}, (A,B,C), data::AbstractMatrix) =
+    RecurrenceArray(undirected.(z), (A,B,C), undirected.(data))

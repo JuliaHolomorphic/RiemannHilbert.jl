@@ -14,6 +14,7 @@ import DomainSets: Domain, ChebyshevInterval, prectype, choice
 import LinearAlgebra: norm
 import Statistics: mean
 import ClassicalOrthogonalPolynomials: legendre, AbstractJacobiWeight
+using PowerNumbers: realpart
 export ⁺, ⁻, Directed, undirected, Segment,
         mobius, tocanonical, tocanonicalD, fromcanonical, fromcanonicalD,
         arclength, complexlength, reverseorientation, collocationpoints
@@ -59,14 +60,18 @@ intervalsign(d::AbstractInterval) = 1
 intervalsign(d::AbstractSegment) = sign(d)
 orientedleftendpoint(d::IntervalOrSegment) = leftendpoint(d) + intervalsign(d)ϵ
 orientedrightendpoint(d::IntervalOrSegment) = rightendpoint(d) - intervalsign(d)ϵ
+orientedleftendpoint(d::Inclusion) = orientedleftendpoint(d.domain)
+orientedrightendpoint(d::Inclusion) = orientedrightendpoint(d.domain)
 
-
+collocationpoints(d::Inclusion, m::Int) = collocationpoints(d.domain, m)
 # use 2nd kind to include endpoints
-collocationpoints(::ChebyshevInterval{T}, m::Int) where T = ChebyshevGrid{2,real(T)}(m)
+collocationpoints(::ChebyshevInterval{T}, m::Int) where T = reverse(ChebyshevGrid{2,float(real(T))}(m))
 function collocationpoints(d::IntervalOrSegment{T}, m::Int) where T
-        i = ChebyshevInterval{T}()
-        affine(d, i)[collocationpoints(i, m)]
+    i = ChebyshevInterval{real(T)}()
+    affine(i, d)[collocationpoints(i, m)]
 end
+
+
 # collocationpoints(d::UnionDomain, ms::AbstractVector{Int}) = vcat(collocationpoints.(pieces(d), ms)...)
 # collocationpoints(d::UnionDomain, m::Int) = collocationpoints(d, pieces_npoints(d,m))
 
@@ -95,38 +100,32 @@ end
 # fprightstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedrightendpoint(d), finitepart)
 # fpleftstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedleftendpoint(d), finitepart)
 
-# function fpstieltjesmatrix!(C, sp, d)
-#     m, n = size(C)
-#     pts = collocationpoints(d, m)
-#     if d == domain(sp)
-#         fprightstieltjesmoment!(view(C,1,:), sp)
-#         for k=2:m-1
-#             stieltjesmoment!(view(C,k,:), sp, Directed{false}(pts[k]))
-#         end
-#         fpleftstieltjesmoment!(view(C,m,:), sp)
-#     elseif leftendpoint(d) ∈ domain(sp) && rightendpoint(d) ∈ domain(sp)
-#         fprightstieltjesmoment!(view(C,1,:), sp, d)
-#         for k=2:m-1
-#             stieltjesmoment!(view(C,k,:), sp, pts[k])
-#         end
-#         fpleftstieltjesmoment!(view(C,m,:), sp, d)
-#     elseif leftendpoint(d) ∈ domain(sp)
-#         for k=1:m-1
-#             stieltjesmoment!(view(C,k,:), sp, pts[k])
-#         end
-#         fpleftstieltjesmoment!(view(C,m,:), sp, d)
-#     elseif rightendpoint(d) ∈ domain(sp)
-#         fprightstieltjesmoment!(view(C,1,:), sp, d)
-#         for k=2:m
-#             stieltjesmoment!(view(C,k,:), sp, pts[k])
-#         end
-#     else
-#         for k=1:m
-#             stieltjesmoment!(view(C,k,:), sp, pts[k])
-#         end
-#     end
-#     C
-# end
+function fpstieltjesmatrix((m,n), sp)
+    d = axes(sp,1)
+    x = collocationpoints(d, m)
+    [permutedims(realpart.(stieltjes(sp, Directed{false}(orientedleftendpoint(d)))[1:n]));
+     stieltjes(sp, Directed{false}.(x[2:end-1]))[:,1:n];
+     permutedims(realpart.(stieltjes(sp, Directed{false}(orientedrightendpoint(d)))[1:n]))]
+end
+
+function fpstieltjesmatrix((m,n), sp, r)
+    d = axes(sp,1).domain
+    d == r && return fpstieltjesmatrix((m,n), sp)
+    x = collocationpoints(r, m)
+    if leftendpoint(r) ∈ d && rightendpoint(r) ∈ d
+        [permutedims(realpart.(stieltjes(sp, orientedleftendpoint(r))[1:n]));
+         stieltjes(sp, x[2:end-1])[:,1:n];
+         permutedims(realpart.(stieltjes(sp, orientedrightendpoint(r))[1:n]))]
+    elseif leftendpoint(r) ∈ d
+        [permutedims(realpart.(stieltjes(sp, orientedleftendpoint(r))[1:n]));
+         stieltjes(sp, x[2:end])[:,1:n]]
+    elseif rightendpoint(r) ∈ d
+        [stieltjes(sp, x[1:end-1])[:,1:n];
+         permutedims(realpart.(stieltjes(sp, orientedrightendpoint(r))[1:n]))]
+    else
+        stieltjes(sp, x)[:,1:n]
+    end
+end
 
 # fpstieltjesmatrix!(C, sp) = fpstieltjesmatrix!(C, sp, domain(sp))
 
