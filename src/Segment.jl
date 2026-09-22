@@ -117,7 +117,7 @@ end
 
 ## algebra
 
-for op in (:*,:+,:-)
+for op in (:*, :+, :-)
     @eval begin
         $op(c::Number,d::Segment) = broadcast($op,c,d)
         $op(d::Segment,c::Number) = broadcast($op,d,c)
@@ -126,8 +126,8 @@ for op in (:*,:+,:-)
     end
 end
 
-broadcasted(::typeof(^),c::Number,d::Segment) = Segment(c^leftendpoint(d),c^rightendpoint(d))
-function broadcasted(::typeof(^),d::Segment,c::Number)
+broadcasted(::typeof(^), c::Number, d::Segment) = Segment(c^leftendpoint(d),c^rightendpoint(d))
+function broadcasted(::typeof(^), d::Segment, c::Number)
     a,b = endpoints(d)
     if a < 0 < b
         Segment(0, b^c)
@@ -171,3 +171,13 @@ isless(d1::Segment{T1},d2::Segment{T2}) where {T1<:Real,T2<:Real} =
     d1 ≤ leftendpoint(d2) && d1 ≤ rightendpoint(d2)
 isless(d1::Segment{T},x::Real) where {T<:Real}=leftendpoint(d1) ≤ x && rightendpoint(d1) ≤ x
 isless(x::Real,d1::Segment{T}) where {T<:Real}=x≤leftendpoint(d1) && x≤rightendpoint(d1)
+
+
+choice(d::Segment{T}) where T = fromcanonical(d, choice(ChebyshevInterval{real(T)}()))
+
+first(x::Inclusion{<:Any, <:Segment}) = leftendpoint(x.domain)
+last(x::Inclusion{<:Any, <:Segment}) = rightendpoint(x.domain)
+
+QuasiArrays.cardinality(::Segment) = ℵ₁
+legendre(d::Segment{T}) where T = Legendre{float(real(T))}()[affine(d,ChebyshevInterval{real(T)}()), :]
+ContinuumArrays.basis_axes(ax::Inclusion{<:Any,<:Segment}, v) = convert(AbstractQuasiMatrix{ContinuumArrays._any_eltype(v)}, legendre(ax))

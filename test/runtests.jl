@@ -179,7 +179,16 @@ end
 
 
 @testset "finitepart stieltjes" begin
+    h = 1E-10
+    w = LegendreWeight()
+    @test stieltjes(w, (-1+ϵ) * ⁻)(h) ≈ stieltjes(w, -1 + h - im*h^2) 
+    @test stieltjes(w, (-1+ϵ) * ⁺)(h) ≈ stieltjes(w, -1 + h + im*h^2)
+    @test stieltjes(w, (1-ϵ) * ⁻)(h) ≈ stieltjes(w, 1 - h - im*h^2) 
+    @test stieltjes(w, (1-ϵ) * ⁺)(h) ≈ stieltjes(w, 1 - h + im*h^2)
+
     f  = expand(Legendre(), exp)
+    @test stieltjes(f, (-1+ϵ) * ⁻)(h) ≈ stieltjes(f, -1 + h - im*h^2)
+    
     f1 = expand(legendre(-1..0), exp)
     f2 = expand(legendre(0..1), exp)
 
@@ -205,9 +214,22 @@ end
     @test stieltjes(f, 0.0⁻) ≈ realpart(stieltjes(fp, -im*ϵ))
 end
 
+@testset "Segment stieltjes" begin
+    Γ = Segment(0, im)
+    f = expand(exp(im*z) for z in Γ)
+    @test f[0.1im] ≈ exp(-0.1)
+
+    @test stieltjes(f, 0.1) ≈ sum(exp(im*t)/(0.1-t) for t in Γ) ≈ sum(exp(-t)/(0.1-im*t)*im for t in 0..1)
+    @test hilbert(f, 0.1im) ≈ -im*(cauchy(f, 0.1im-eps()) + cauchy(f,0.1im+eps()))
+end
+
 @testset "Interval FPStieltjes" begin
     Γ = ChebyshevInterval()
     f = expand(exp(-40(x-0.1)^2) for x in Γ)
+
+    h = 1E-10
+    
+    @test map(l -> l(h), stieltjes(Legendre(), (-1) * ⁻)[1:100]) ≈ stieltjes(Legendre(), -1-im*h)[1:100] atol=100h
     # C = Array{ComplexF64}(undef, ncoefficients(f), ncoefficients(f))
     # d = Segment(im,2im)
 

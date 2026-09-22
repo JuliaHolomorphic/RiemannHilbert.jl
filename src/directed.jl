@@ -61,8 +61,11 @@ end
 
 
 # branchcuts of log, sqrt, etc. are oriented from (0,-∞)
-Base.log(x::Directed{true}) = log(-x.x) - π*im
-Base.log(x::Directed{false}) = log(-x.x) + π*im
+# log(-x) = log|x| ± im*π
+function Base.log(x::Directed{s}) where s
+    r = log(abs(x.x))
+    r - (2s-1) * convert(typeof(r), π) * im
+end
 Base.log1p(x::Directed) = log(1+x)
 Base.sqrt(x::Directed{true}) = real(x.x) ≥ 0 ? sqrt(complex(x.x)) : -im*sqrt(-x.x)
 Base.sqrt(x::Directed{false}) = real(x.x) ≥ 0 ? sqrt(complex(x.x)) : im*sqrt(-x.x)

@@ -7,9 +7,11 @@ ClassicalOrthogonalPolynomials = "b30e2e7b-c4ee-47da-9d5f-2c5c27239acd"
 ContinuumArrays = "7ae1f121-cc2c-504b-ac30-9b923412ae5c"
 DomainSets = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
 HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
+Infinities = "e1ba4f0e-776d-440f-acd9-e1d2e9742647"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PowerNumbers = "7635a310-babe-11e9-2fde-a3dff3ddcf26"
+QuasiArrays = "c4ea9172-b204-11e9-377d-29865faadc5c"
 RecurrenceRelationshipArrays = "b889d2dc-af3c-4820-88a8-238fa91d3518"
 SingularIntegrals = "d7440221-8b5e-42fc-909c-0567823f424a"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
@@ -17,6 +19,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 [sources]
 ClassicalOrthogonalPolynomials = {path = "/Users/solver/Projects/ClassicalOrthogonalPolynomials.jl/"}
 ContinuumArrays = {path = "/Users/solver/Projects/ContinuumArrays.jl/"}
+IntervalSets = {path = "/Users/solver/Projects/IntervalSets.jl/"}
 PowerNumbers = {path = "/Users/solver/Projects/PowerNumbers.jl"}
 SingularIntegrals = {path = "/Users/solver/Projects/SingularIntegrals.jl/"}
 
@@ -24,9 +27,11 @@ SingularIntegrals = {path = "/Users/solver/Projects/SingularIntegrals.jl/"}
 ClassicalOrthogonalPolynomials = "0.15"
 DomainSets = "0.7, 0.8"
 HypergeometricFunctions = "0.3.30"
+Infinities = "0.1.13"
 IntervalSets = "0.7.14"
 LinearAlgebra = "1"
 PowerNumbers = "0.0.1"
+QuasiArrays = "0.13.12"
 RecurrenceRelationshipArrays = "0.1.5"
 SingularIntegrals = "0.4"
 Statistics = "1"

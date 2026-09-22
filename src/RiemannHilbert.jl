@@ -1,20 +1,23 @@
 module RiemannHilbert
-using SingularIntegrals, HypergeometricFunctions, PowerNumbers, RecurrenceRelationshipArrays,
-        IntervalSets, DomainSets, LinearAlgebra, Statistics
+using SingularIntegrals, HypergeometricFunctions, PowerNumbers, Infinities, RecurrenceRelationshipArrays,
+        IntervalSets, DomainSets, LinearAlgebra, Statistics,
+        ContinuumArrays, QuasiArrays, ClassicalOrthogonalPolynomials
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
                 >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
                 isinf, in, real, imag, muladd, conj, isempty, issubset, isapprox, isless,
-                intersect, setdiff, minimum, maximum, angle, sign, sqrt
+                intersect, setdiff, minimum, maximum, angle, sign, sqrt,
+                first, last
 import Base.Broadcast: broadcasted
 import IntervalSets: leftendpoint, rightendpoint, endpoints, width, Interval
-import DomainSets: Domain, ChebyshevInterval, prectype
+import DomainSets: Domain, ChebyshevInterval, prectype, choice
 import LinearAlgebra: norm
 import Statistics: mean
+import ClassicalOrthogonalPolynomials: legendre, AbstractJacobiWeight
 export ⁺, ⁻, Directed, undirected, Segment,
         mobius, tocanonical, tocanonicalD, fromcanonical, fromcanonicalD,
-        arclength, complexlength, reverseorientation
-
+        arclength, complexlength, reverseorientation, collocationpoints
+        
 include("Segment.jl")
 include("directed.jl")
 
@@ -58,8 +61,12 @@ orientedleftendpoint(d::IntervalOrSegment) = leftendpoint(d) + intervalsign(d)ϵ
 orientedrightendpoint(d::IntervalOrSegment) = rightendpoint(d) - intervalsign(d)ϵ
 
 
-# # use 2nd kind to include endpoints
-# collocationpoints(d::IntervalOrSegmentDomain, m::Int) = points(d, m; kind=2)
+# use 2nd kind to include endpoints
+collocationpoints(::ChebyshevInterval{T}, m::Int) where T = ChebyshevGrid{2,real(T)}(m)
+function collocationpoints(d::IntervalOrSegment{T}, m::Int) where T
+        i = ChebyshevInterval{T}()
+        affine(d, i)[collocationpoints(i, m)]
+end
 # collocationpoints(d::UnionDomain, ms::AbstractVector{Int}) = vcat(collocationpoints.(pieces(d), ms)...)
 # collocationpoints(d::UnionDomain, m::Int) = collocationpoints(d, pieces_npoints(d,m))
 
