@@ -1,4 +1,4 @@
-using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, ContinuumArrays, Statistics, Test
+using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, ContinuumArrays, Statistics, BlockArrays, Test, DomainSets, LinearAlgebra
 import PowerNumbers: logpart, realpart
 import IntervalSets: leftendpoint, rightendpoint, endpoints, Interval
 import RiemannHilbert: intervalsign, orientedleftendpoint, orientedrightendpoint, fpstieltjesmatrix
@@ -153,8 +153,8 @@ end
     @test imag(LogNumber(2im,im+1)) == LogNumber(2,1)
     @test conj(LogNumber(2im,im+1)) == LogNumber(-2im,1-im)
 
-    @test log(Directed{false}(-ϵ)) == LogNumber(1,π*im)
-    @test log(Directed{true}(-ϵ)) == LogNumber(1,-π*im)
+    @test log((-ϵ) * ⁻) == LogNumber(1,π*im)
+    @test log((-ϵ) * ⁺) == LogNumber(1,-π*im)
 
     @test log(Directed{false}((-1-eps()*im)ϵ)) ≈ LogNumber(1,π*im)
     @test log(Directed{false}((-1+eps()*im)ϵ)) ≈ LogNumber(1,π*im)
@@ -176,7 +176,6 @@ end
     @test RiemannHilbert.orientedleftendpoint(ChebyshevInterval()) ≡ -1.0+ϵ
     @test RiemannHilbert.orientedrightendpoint(ChebyshevInterval()) ≡ 1.0-ϵ
 end
-
 
 @testset "finitepart stieltjes" begin
     h = 1E-10
@@ -233,169 +232,112 @@ end
 
     n = 100
     r = Segment(im,2im)
-    @test fpstieltjesmatrix((n,n), basis(f), r) * coefficients(f)[1:n] ≈ stieltjes(f, collocationpoints(r, n))
+    @test fpstieltjesmatrix((n,n), Γ, r) * coefficients(f)[1:n] ≈ stieltjes(f, collocationpoints(r, n))
 
     r = Segment(-1,-1+im)
-    C = fpstieltjesmatrix((n,n), basis(f), r)
+    C = fpstieltjesmatrix((n,n), Γ, r)
     @test (C * coefficients(f)[1:n]) ≈ stieltjes(f, [-1+eps()im; collocationpoints(r, n)[2:end]])
     @test norm(C) ≤ 100
 
     r = Segment(1,1+im)
-    C = fpstieltjesmatrix((n,n), basis(f), r)
+    C = fpstieltjesmatrix((n,n), Γ, r)
     @test (C * coefficients(f)[1:n]) ≈ stieltjes(f, [1+eps()im; collocationpoints(r, n)[2:end]])
     @test norm(C) ≤ 100
 
-    r = d
-    C = fpstieltjesmatrix((n,n), basis(f), r)
+    r = Γ
+    C = fpstieltjesmatrix((n,n), Γ, r)
     @test (C * coefficients(f)[1:n]) ≈ stieltjes(f, collocationpoints(r, n) .- eps()*im)
     @test norm(C) ≤ 200
     
 
     d = 0..1
     f = expand(exp(-200(x-0.6)^2) for x in d)
-    C = fpstieltjesmatrix((n,n), basis(f))
+    C = fpstieltjesmatrix((n,n), d)
     @test norm(C) ≤ 200
     c = C*coefficients(f)[1:n]
     @test c ≈ stieltjes(f, collocationpoints(d, n) .- eps()*im)
+
+    r = -2..(-1)
+    C = fpstieltjesmatrix((n,n), d, r)
+    @test stieltjes(f, collocationpoints(r, n)) ≈ C * coefficients(f)[1:n]
+    
+    r = -1..0
+    C = fpstieltjesmatrix((n,n), d, r)
+    @test stieltjes(f, collocationpoints(r, n)[1:end-1]) ≈ C[1:end-1,:] * coefficients(f)[1:n]
+    @test stieltjes(f, -eps()) ≈ only(C[end:end,:] * coefficients(f)[1:n])
+
+    # reversed orientation
+    d = Segment(1,0)
+    f = expand(exp(-200(x-0.6)^2) for x in d)
+    C = fpstieltjesmatrix((n,n), d)
+    @test norm(C) ≤ 200
+    c = C*coefficients(f)[1:n]
+    @test c ≈ stieltjes(f, collocationpoints(d, n) .+ eps()*im)
 end
 
-# @testset "Two interval" begin
-#     @testset "-1..0 and 0..1" begin
-#         sp = Legendre(-1 .. 0) ⊕ Legendre(0 .. 1)
-#         f = Fun(x->exp(-40(x-0.1)^2), sp)
-#         v = components(f)
-#         ns = ncoefficients.(v)
-#         C11 = fpstieltjesmatrix(space(v[1]), ncoefficients(v[1]), ncoefficients(v[1]))
-#         c_vals11 = C11*v[1].coefficients
-#         h = 0.00000001; @test stieltjes(v[1],h*im) ≈ stieltjes(v[1],RiemannDual(0.0,im))(h) atol=1E-6
-#         @test finitepart(stieltjes(v[1],Directed{false}(RiemannDual(0.0,-1)))) ≈ c_vals11[1]
+@testset "Two interval" begin
+    @testset "-1..0 and 0..1" begin
+        f = expand(exp(-40(x-0.1)^2) for x in UnionDomain(-1..0, 0..1))
+        d = domain(f)
 
-#         C22 = fpstieltjesmatrix(space(v[2]), ncoefficients(v[2]), ncoefficients(v[2]))
-#         c_vals22 = C22*v[2].coefficients
-#         h = 0.00000001; @test stieltjes(v[2],h*im) ≈ stieltjes(v[2],RiemannDual(0.0,im))(h) atol=1E-6
-#         @test finitepart(stieltjes(v[2],Directed{false}(RiemannDual(0.0,1)))) ≈ c_vals22[end]
+        n = 100
+        @time C = fpstieltjesmatrix((n,n), d)
+        @test C[Block(1,1)] == fpstieltjesmatrix((n,n), -1..0)
+        @test C[Block(1,2)] == fpstieltjesmatrix((n,n), 0..1, -1..0)
+        @test C[Block(2,1)] == fpstieltjesmatrix((n,n), -1..0, 0..1)
+        @test C[Block(2,2)] == fpstieltjesmatrix((n,n), 0..1)
 
-#         C12 = fpstieltjesmatrix(space(v[2]), domain(v[1]), ncoefficients(v[1]), ncoefficients(v[2]))        
-#         c_vals12 = C12*v[2].coefficients
-#         h = 0.00000001; @test stieltjes(v[2],-h) ≈ stieltjes(v[2],RiemannDual(0.0,-1))(h) atol=1E-6
-#         @test finitepart(stieltjes(v[2],RiemannDual(0.0,-1))) ≈ c_vals12[1]
+        v = components(f)
+        @test C * [coefficients(v[1])[1:n]; coefficients(v[2])[1:n]] ≈ [stieltjes(f, x) for x in collocationpoints(domain(f), Block(n)) .- eps()im]
+        @test norm(C) ≤ 300
 
-#         C = fpstieltjesmatrix(space(f), ns, ns)
-#         @test norm(C) ≤ 200
+        g = expand(exp(-40(x-0.1)^2) for x in -1..1)
+        @test stieltjes(f, -im) ≈ stieltjes(g, -im)
+        @test stieltjes(f, -eps()im) ≈ stieltjes(g, -eps()im)
+        h = 0.00000001
+        # log part == 0 means ≈ fails
+        @test stieltjes(f, (-ϵ) * ⁻)(h) ≈ (stieltjes(v[1], (-ϵ) * ⁻) + stieltjes(v[2], (0.0-ϵ)))(h)
+        @test stieltjes(v[1], (-ϵ) * ⁻)(h) ≈ stieltjes(v[1], -h-h^2*im) rtol=1E-6
+        @test stieltjes(v[2], -ϵ)(h) ≈ stieltjes(v[2], -h) rtol=1E-6
+        @test stieltjes(v[1], (-ϵ) * ⁻) + stieltjes(v[2], (0.0-ϵ)) ≈ stieltjes(g, 0.0 * ⁻)  ≈ stieltjes(f, -eps()im) ≈ stieltjes(g, -eps()im)
+    end
 
-#         @test C[1:ns[1],1:2:end] == C11
+    @testset "Segment(0,-1) and 0..1" begin
+        f = expand(sign(x)*exp(-40(x-0.1)^2) for x in Segment(0,-1) ∪ (0..1))
+        d = domain(f)
 
-#         c_vals = C*coefficients(f)
-#         pts = RiemannHilbert.collocationpoints(space(f), ns)
+        n = 100
+        @time C = fpstieltjesmatrix((n,n), d)
 
-#         f_ex = Fun(x->exp(-40(x-0.1)^2), Legendre())
-#         @test stieltjes(f_ex, Directed{false}(0.0)) ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,-im))))
-#         @test finitepart(stieltjes(v[1],RiemannDual(0.0,-im))+stieltjes(v[2],RiemannDual(0.0,-im))) ≈ stieltjes(f_ex,Directed{false}(0.0))
+        @test C[Block(1,1)] == fpstieltjesmatrix((n,n), Segment(0,-1))
+        @test C[Block(1,2)] == fpstieltjesmatrix((n,n), 0..1, Segment(0,-1))
+        @test C[Block(2,1)] == fpstieltjesmatrix((n,n), Segment(0,-1), 0..1)
+        @test C[Block(2,2)] == fpstieltjesmatrix((n,n), 0..1)
+    end
+end
 
-#         @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,-im))))
-#         @test c_vals[1] ≈ finitepart(stieltjes(f,Directed{false}(RiemannDual(0.0,exp(-0.1im)))))
-#         @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
-#         @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
-#         @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
+@testset "Vector-valued stieltjes" begin
+    𝐟 = expand([exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2)] for x in ChebyshevInterval())
+    @test cauchy(𝐟, 0.2 * ⁺) ≈  cauchy(𝐟, 0.2 + eps()im) ≈ [cauchy(first.(𝐟), 0.2+eps()im); cauchy(last.(𝐟), 0.2+eps()im)]
+    @test cauchy(𝐟, 0.2 * ⁺) - cauchy(𝐟, 0.2 * ⁻) ≈ 𝐟[0.2]
+    @test cauchy(𝐟, 0.2 * ⁺) + cauchy(𝐟, 0.2 * ⁻) ≈ im*hilbert(𝐟, 0.2)
 
-#         @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
-#         @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-#         @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
-
-#         h =0.00001
-#         @test stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0-eps()*im))
-
-#         @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
-#             stieltjes(v[1], -0.00000000001im)+stieltjes(v[2], -0.00000000001im)
-
-
-#         @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
-#             stieltjes(f, -0.00000000001im)
-
-#         @test c_vals[1] ≈ stieltjes(f, -0.0000000001im)
-#         @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
-
-#         @test finitepart(stieltjes(f, RiemannDual(0.0,-im))) ≈ 
-#             finitepart(stieltjes(v[1], RiemannDual(0.0,-im))+stieltjes(v[2], RiemannDual(0.0,-im)))
+    @test realpart.(stieltjes(𝐟, (-1+ϵ) * ⁻)) ≈ π*hilbert(𝐟,-1+eps())
 
 
-#         C11 = fpstieltjesmatrix(space(v[1]), ncoefficients(v[1]), ncoefficients(v[1]))
-#         C12 = fpstieltjesmatrix(space(v[2]), domain(v[1]), ncoefficients(v[1]), ncoefficients(v[2]))
+    𝐠 = expand([exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2)] for x in UnionDomain(-1..0, 0..1))
+    @test sum(𝐟) ≈ sum(𝐠) ≈ [sum(first.(𝐠)), sum(last.(𝐠))]
+    @test stieltjes(𝐟, im) ≈ stieltjes(𝐠, im)
+    @test hilbert(𝐠, 0.2) ≈ hilbert(𝐟, 0.2)
+    @test realpart.(stieltjes(𝐠, (0.2-ϵ) * ⁻)) ≈ stieltjes(𝐟, 0.2 * ⁻)
+    stieltjes(𝐠, 0.2-eps()im)
+end
 
-#         @test finitepart(stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0)))) ≈ (C11*coefficients(v[1]))[1]
-#         @test finitepart(stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈ dotu(stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), finitepart),
-#                     coefficients(v[2]))
-
-#         @test C12[1,:] ≈ stieltjesmoment!(Array{ComplexF64}(undef,ncoefficients(v[2])), space(v[2]), orientedrightendpoint(domain(v[1])), finitepart)
-
-#         @test finitepart(stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈ (C12*coefficients(v[2]))[1]
-#         @test C[1,:] ≈ interlace(C11[1,:], C12[1,:])
-#     end
-
-#     @testset "0..1 and 0..1" begin
-#         sp = Legendre(Segment(0 , -1)) ⊕ Legendre(0 .. 1)
-
-#         f = Fun(x->sign(x)*exp(-40(x-0.1)^2), sp)
-#         v = components(f)
-#         ns = ncoefficients.(v)
-#         C = fpstieltjesmatrix(space(f), ns, ns)
-#         @test norm(C) ≤ 200
-#         c_vals = C*coefficients(f)
-#         pts = RiemannHilbert.collocationpoints(space(f), ns)
-
-#         @test stieltjes(f,-1-eps()) ≈ stieltjes(f,RiemannDual(-1.0,-1.0)).c
-#         @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
-#         @test c_vals[2:ns[1]-1] ≈ stieltjes.(f,pts[2:ns[1]-1]⁻)
-#         @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(0.0,+im)))
-#         @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
-#         @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-#         @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
-
-
-#         h =0.00001
-#         @test stieltjes(v[1], Directed{false}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0+eps()*im))
-#         @test stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0))) ≈ stieltjes(v[1], RiemannDual(0.0,-1.0-eps()*im))
-
-#         @test stieltjes(v[2], RiemannDual(0.0,-1.0))(h) ≈ stieltjes(v[2], -h) atol=1E-3
-
-#         @test stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))(h) ≈ stieltjes(v[1], -h-eps()*im) atol=1E-3
-
-
-#         @test finitepart(stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
-#             stieltjes(v[1], -0.00000000001im)+stieltjes(v[2], -0.00000000001im)
-
-
-#         @test finitepart(stieltjes(v[1], Directed{true}(RiemannDual(0.0,-1.0)))+ stieltjes(v[2], RiemannDual(0.0,-1.0))) ≈
-#             stieltjes(f, -0.00000000001im)
-
-#         @test c_vals[ns[1]] ≈ stieltjes(f, +0.0000000001im)
-#         @test c_vals[end] ≈ stieltjes(f, -0.0000000001im)
-#     end
-
-#     @testset "-1..0 and 0..1" begin
-#         sp = Legendre(-1 .. 0) ⊕ Legendre(0 .. 1)
-#         f = Fun(x->exp(-40(x-0.1)^2), sp)
-#         v = components(f)
-#         ns = ncoefficients.(v)
-#         C = fpstieltjesmatrix(space(f), ns, ns)
-#         @test norm(C) ≤ 200
-
-#         c_vals = C*coefficients(f)
-#         pts = RiemannHilbert.collocationpoints(space(f), ns)
-
-#         @test c_vals[1] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
-#         @test c_vals[2:ns[1]-1] ≈  stieltjes.(f,pts[2:ns[1]-1]⁻)
-#         @test c_vals[ns[1]] ≈ finitepart(stieltjes(f,RiemannDual(-1.0,-1.0)))
-#         @test c_vals[ns[1]+1] ≈ finitepart(stieltjes(f,RiemannDual(1.0,1.0)))
-#         @test c_vals[ns[1]+2:end-1] ≈  stieltjes.(f,pts[ns[1]+2:end-1]⁻)
-#         @test c_vals[end] ≈ finitepart(stieltjes(f,RiemannDual(0.0,-im)))
-#     end
-# end
-
-# @testset "ArraySpace" begin
-#     sp = ArraySpace(Legendre() ,2)
-#     f = Fun(x->[exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2)], sp)
-#     ns = ncoefficients.(Array(f))
+@testset "Vector-valued fpstieltjes" begin
+    𝐟 = expand([exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2)] for x in ChebyshevInterval())
+    sp = basis(𝐟)
+    n = 200
+    # fpstieltjesmatrix((n,n), sp)
 #     C = fpstieltjesmatrix(sp, ns, ns)
 #     C1 = fpstieltjesmatrix(sp[1], ns[1], ns[1])
 #     C2 = fpstieltjesmatrix(sp[2], ns[2], ns[2])
@@ -443,47 +385,24 @@ end
 #     C22 = fpstieltjesmatrix(sp[2,2], ns[2,2], ns[2,2])
 
 #     @test C*coefficients(f) ≈ [C11*coefficients(f[1,1]) ; C21*coefficients(f[2,1]) ; C12*coefficients(f[1,2]) ; C22*coefficients(f[2,2])]
-# end
+end
 
-# @testset "rhsolve" begin
-#     sp = Legendre()
-#     g = 1-0.3Fun(x->exp(-40x^2), sp)
-#     n = 2ncoefficients(g)
-#     g_v = RiemannHilbert.collocationvalues(g-1, n)
-#     u = Fun(sp, rhmatrix(g,n) \ g_v)
-
-#     @testset "-1 .. 1" begin
-#         n = 2ncoefficients(g)
-#         g = pad(g,n)
-#         C₋ = fpcauchymatrix(sp, n, n)
-#         pts = RiemannHilbert.collocationpoints(sp, n)
-#         @test C₋[2:end-1,:]*coefficients(g) ≈ cauchy.(g, pts[2:end-1]⁻)
-#         g_v = RiemannHilbert.collocationvalues(g-1, n)
-#         @test g_v ≈ g.(pts).-1
-#         G = Diagonal(g_v)
-
-#         @test G*g_v ≈ (g.(pts) .- 1).^2
-
-#         E = RiemannHilbert.evaluationmatrix(sp, pts, length(pts))
-#         @test E*coefficients(g) ≈ g.(pts)
-
-#         @test (g.(pts).-1).*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-#         @test G*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-
-#         L = E - G*C₋
-#         @test L*coefficients(g) ≈ g.(pts) - (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-
-#         @test L == rhmatrix(g,n)
-
+@testset "rhsolve" begin    
+    @testset "-1 .. 1" begin
+        sp = Legendre()
+        g = expand(sp, x-> 1 -0.3exp(-40x^2))
+        n = 200
+        𝐱 = collocationpoints(domain(sp), n)
+        g_v = g[𝐱] .- 1
         
-#         φ = z -> 1 + cauchy(u,z)
-#         @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
+        u = sp[:,1:n] * (rhmatrix(g,n) \ g_v)
+        @test 1 + cauchy(u, 0.1+0.0im) ≈ (1 + cauchy(u, 0.1-0.0im))*g[0.1]
+        φ = z -> 1 + cauchy(u,z)
+        @test φ(0.1⁺)  ≈ g[0.1]φ(0.1⁻)
 
-
-#         @test 1+cauchy(u)(0.1+0.2im) ≈ φ(0.1+0.2im)
-#         @test (1+cauchy(u) )(0.1+0.2im) ≈ φ(0.1+0.2im)
-#         @test (1+cauchy(u) )(0.1⁻) ≈ φ(0.1⁻)
-#     end
+        φ = rhsolve(g, n)
+        @test φ(0.1⁺)  ≈ g[0.1]φ(0.1⁻)
+    end
 
 #     @testset "-1 .. 0 and 0 .. 1" begin
 #         sp = Legendre(-1 .. 0) ∪ Legendre(0 .. 1)
@@ -628,7 +547,7 @@ end
 #         Φ = rhsolve(G, 200)
 #         @test Φ(0.1⁺) ≈ G(0.1)Φ(0.1⁻)
 #     end
-# end
+end
 
 # @testset "Matrix rhsolve" begin
 #     sp = ArraySpace(Legendre(), 2)

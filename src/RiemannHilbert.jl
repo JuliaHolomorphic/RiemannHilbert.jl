@@ -1,7 +1,7 @@
 module RiemannHilbert
 using SingularIntegrals, HypergeometricFunctions, PowerNumbers, Infinities, RecurrenceRelationshipArrays,
         IntervalSets, DomainSets, LinearAlgebra, Statistics,
-        ContinuumArrays, QuasiArrays, ClassicalOrthogonalPolynomials
+        ContinuumArrays, QuasiArrays, ClassicalOrthogonalPolynomials, BlockArrays, LazyBandedMatrices
 
 import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype,
                 >=, /, ^, \, ∪, size, reindex, tail, broadcast, broadcast!,
@@ -17,7 +17,8 @@ import ClassicalOrthogonalPolynomials: legendre, AbstractJacobiWeight
 using PowerNumbers: realpart
 export ⁺, ⁻, Directed, undirected, Segment,
         mobius, tocanonical, tocanonicalD, fromcanonical, fromcanonicalD,
-        arclength, complexlength, reverseorientation, collocationpoints
+        arclength, complexlength, reverseorientation, collocationpoints,
+        rhmatrix, rhsolve
         
 include("Segment.jl")
 include("directed.jl")
@@ -54,7 +55,7 @@ include("directed.jl")
 # import DualNumbers: Dual, realpart, epsilon, dual
 # import FillArrays: AbstractFill
 
-# export cauchymatrix, rhmatrix, rhsolve, ℂ, istieltjes, KdV
+# export cauchymatrix, ℂ, istieltjes, KdV
 
 intervalsign(d::AbstractInterval) = 1
 intervalsign(d::AbstractSegment) = sign(d)
@@ -71,6 +72,7 @@ function collocationpoints(d::IntervalOrSegment{T}, m::Int) where T
     affine(i, d)[collocationpoints(i, m)]
 end
 
+collocationpoints(d::UnionDomain, M::Block{1}) = BlockVcat(collocationpoints.(components(d), Int(M))...)
 
 # collocationpoints(d::UnionDomain, ms::AbstractVector{Int}) = vcat(collocationpoints.(pieces(d), ms)...)
 # collocationpoints(d::UnionDomain, m::Int) = collocationpoints(d, pieces_npoints(d,m))
@@ -100,17 +102,17 @@ end
 # fprightstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedrightendpoint(d), finitepart)
 # fpleftstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedleftendpoint(d), finitepart)
 
-function fpstieltjesmatrix((m,n), sp)
-    d = axes(sp,1)
+function fpstieltjesmatrix((m,n), d::IntervalOrSegment{T}) where T
+    sp = legendre(d)
     x = collocationpoints(d, m)
     [permutedims(realpart.(stieltjes(sp, Directed{false}(orientedleftendpoint(d)))[1:n]));
      stieltjes(sp, Directed{false}.(x[2:end-1]))[:,1:n];
      permutedims(realpart.(stieltjes(sp, Directed{false}(orientedrightendpoint(d)))[1:n]))]
 end
 
-function fpstieltjesmatrix((m,n), sp, r)
-    d = axes(sp,1).domain
-    d == r && return fpstieltjesmatrix((m,n), sp)
+function fpstieltjesmatrix((m,n), d::IntervalOrSegment, r::IntervalOrSegment)
+    sp = legendre(d)
+    d == r && return fpstieltjesmatrix((m,n), d)
     x = collocationpoints(r, m)
     if leftendpoint(r) ∈ d && rightendpoint(r) ∈ d
         [permutedims(realpart.(stieltjes(sp, orientedleftendpoint(r))[1:n]));
@@ -127,43 +129,11 @@ function fpstieltjesmatrix((m,n), sp, r)
     end
 end
 
-# fpstieltjesmatrix!(C, sp) = fpstieltjesmatrix!(C, sp, domain(sp))
-
-# fpstieltjesmatrix(sp::Space, d::Domain, n::Int, m::Int) =
-#     fpstieltjesmatrix!(Array{ComplexF64}(undef, n, m), sp, d)
-
-# fpstieltjesmatrix(sp::Space, n::Int, m::Int) =
-#     fpstieltjesmatrix!(Array{ComplexF64}(undef, n, m), sp, domain(sp))
 
 
-# # we group points together by piece
-# function fpstieltjesmatrix!(C, sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::AbstractVector{Int})
-#     N, M = length(ns), length(ms)
-#     @assert N == M == npieces(sp)
-#     n, m = sum(ns), sum(ms)
-#     @assert size(C) == (n,m)
-
-#     for J = 1:M
-#         jr = component_indices(sp, J, 1:ms[J])
-#         k_start = 1
-#         for K = 1:N
-#             k_end = k_start + ns[K] - 1
-#             kr = k_start:k_end
-#             fpstieltjesmatrix!(view(C, kr, jr), component(sp, J),  domain(component(sp, K)))
-#             k_start = k_end+1
-#         end
-#     end
-
-#     C
-# end
-
-
-# fpstieltjesmatrix(sp::PiecewiseSpace, ns::AbstractVector{Int}, ms::AbstractVector{Int}) =
-#     fpstieltjesmatrix!(Array{ComplexF64}(undef, sum(ns), sum(ms)), sp, ns, ms)
-
-# fpstieltjesmatrix!(C, sp::PiecewiseSpace) = fpstieltjesmatrix!(C, sp, pieces_npoints(sp, size(C,1)), pieces_npoints(sp, size(C,2)))
-# fpstieltjesmatrix(sp::PiecewiseSpace, n::Int, m::Int) = fpstieltjesmatrix(sp, pieces_npoints(sp, n), pieces_npoints(sp, m))
-
+function fpstieltjesmatrix((m,n), d::UnionDomain)
+    mortar([fpstieltjesmatrix((m,n), b, a) for a in components(d), b in components(d)])
+end
 
 # # we group indices together by piece
 # function fpstieltjesmatrix(sp::ArraySpace, ns::AbstractArray{Int}, ms::AbstractArray{Int})
@@ -186,13 +156,11 @@ end
 # fpstieltjesmatrix(sp::ArraySpace, n::Int, m::Int) =
 #     fpstieltjesmatrix(sp, reshape(pieces_npoints(sp, n), size(sp)), reshape(pieces_npoints(sp, m), size(sp)))
 
-
-# cauchymatrix(x...) = stieltjesmatrix(x...)/(-2π*im)
-# function fpcauchymatrix(x...)
-#     C = fpstieltjesmatrix(x...)
-#     C ./= (-2π*im)
-#     C
-# end
+function fpcauchymatrix(x...)
+    C = fpstieltjesmatrix(x...)
+    C ./= (-2π*im)
+    C
+end
 
 # ## riemannhilbert
 # function multiplicationmatrix(G, n)
@@ -211,14 +179,16 @@ end
 #     ret
 # end
 
-# function rhmatrix(g::ScalarFun, n)
-#     sp = rhspace(g)
-#     C₋ = fpcauchymatrix(sp, n, n)
-#     g_v = collocationvalues(g-1, n)
-#     E = evaluationmatrix(sp, n)
-#     C₋ .= g_v .* C₋
-#     E .- C₋
-# end
+function rhmatrix(g, n)
+    sp = basis(g)
+    d = domain(sp)
+    C₋ = fpcauchymatrix((n, n), d)
+    𝐱 = collocationpoints(d, n)
+    𝐠 = g[𝐱] .- 1
+    E = sp[𝐱,1:n]
+    C₋ .= 𝐠 .* C₋
+    E .- C₋
+end
 
 # function rhmatrix(g::MatrixFun, n)
 #     sp = vector_rhspace(g)
@@ -252,12 +222,13 @@ end
 # rhspace(g::Fun{<:ArraySpace}) = array_rhspace(size(g), domain(g))
 # rhspace(g::Fun) = scalar_rhspace(domain(g))
 
-# rhsolve(g::ScalarFun, n) = 1+cauchy(Fun(rhspace(g), rhmatrix(g, n) \ (collocationvalues(g-1, n))))
-# function rhsolve(G::MatrixFun, n)
-#     U = rh_sie_solve(G, n)
-#     I+cauchy(U)
-# end
-
+function rhsolve(g, n)
+    sp = basis(g)
+    𝐱 = collocationpoints(domain(sp), n)
+    g_v = g[𝐱] .- 1
+    u = sp[:,1:n] * (rhmatrix(g,n) \ g_v)
+    z -> 1 + cauchy(u,z)
+end
 
 
 # ## AffineSpace

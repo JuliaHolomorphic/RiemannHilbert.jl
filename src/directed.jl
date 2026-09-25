@@ -54,26 +54,26 @@ real(::Type{Directed{s,T}}) where {s,T} = real(T)
 
 
 # abs, real and imag delete orientation.
-for OP in (:(Base.isfinite), :(Base.isinf), :(Base.abs), :(Base.real), :(Base.imag), :(Base.angle))
-    @eval $OP(a::Directed) = $OP(a.x)
+for OP in (:(Base.isfinite), :(Base.isinf), :(Base.abs), :(Base.real), :(Base.imag))
+    @eval $OP(a::Directed) = $OP(undirected(a))
 end
+
 
 # conj(a::Directed{s}) where s = Directed{!s}(conj(a.x))
 
 
 # branchcuts of log, sqrt, etc. are oriented from (0,-∞)
+# this is inhereted from angle
 # log(-x) = log|x| ± im*π
-function Base.log(x::Directed{s}) where s
-    r = log(abs(x.x))
-    r - (2s-1) * convert(typeof(r), π) * im
-end
+# We use analytic continuation for meaningful definition:
+# log(x * ⁺) means the analytic continuation of log from the upper half plane
+# log(x * ⁻) means the analytic continuation of log from the lower half plane
+# 
+Base.angle(x::Directed{s}) where s = (2angle(x.x * (2s-1) * im) + (1-2s)*π)/2 # use type-inferrence of x + π
+Base.log(x::Directed) = log(abs(x)) + im * angle(x)
 Base.log1p(x::Directed) = log(1+x)
-Base.sqrt(x::Directed{true}) = real(x.x) ≥ 0 ? sqrt(complex(x.x)) : -im*sqrt(-x.x)
-Base.sqrt(x::Directed{false}) = real(x.x) ≥ 0 ? sqrt(complex(x.x)) : im*sqrt(-x.x)
-^(x::Directed{true}, a::Integer) = x.x^a
-^(x::Directed{false}, a::Integer) = x.x^a
-^(x::Directed{true}, a::Number) = exp(-a*π*im)*(-x.x)^a
-^(x::Directed{false}, a::Number) = exp(a*π*im)*(-x.x)^a
+Base.sqrt(x::Directed) = exp(log(x)/2)
+^(x::Directed, a::Integer) = exp(a*log(x))
 
 
 # Support for _2F1
