@@ -430,93 +430,45 @@ end
     @testset "HM on 6 rays" begin
         s₁,s₂,s₃ = -im,0,im
         @assert s₁ - s₂ + s₃ + s₁*s₂*s₃ ≈ 0
-
-        # construct true solution using 4 rays
-        Γ = Segment(0, 2.5exp(im*π/6)) ∪ Segment(0, 2.5exp(5im*π/6)) ∪
-        Segment(0, 2.5exp(-5im*π/6)) ∪ Segment(0, 2.5exp(-im*π/6))
-        sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
-
-        G = Fun( z -> if angle(z) ≈ π/6
-                            [1 0; s₁*exp(8im/3*z^3) 1]
-                        elseif angle(z) ≈ 5π/6
-                            [1 0; s₃*exp(8im/3*z^3) 1]
-                        elseif angle(z) ≈ -π/6
-                            [1 -s₃*exp(-8im/3*z^3); 0 1]
-                        elseif angle(z) ≈ -5π/6
-                            [1 -s₁*exp(-8im/3*z^3); 0 1]
-                        end
-                            , sp)
-
-        Φ = transpose(rhsolve(transpose(G), 2*6*100))
-
-
-        # debug
-        V4 = istieltjes(Φ)
+        n = 100
         x = 0.0
 
-        @test stieltjes(V4,1+im)+I == Φ(1+im)
-
-
-        Γ = Segment(0, 2.5exp(im*π/6))   ∪
-        Segment(0, 2.5exp(im*π/2))       ∪
-        Segment(0, 2.5exp(5im*π/6))      ∪
-        Segment(0, 2.5exp(-5im*π/6))     ∪
-        Segment(0, 2.5exp(-im*π/2))      ∪
-        Segment(0, 2.5exp(-im*π/6));
-
-        G = Fun( z -> if angle(z) ≈ π/6
+        # jump on the ray with angle θ
+        Gf = (θ, z) -> if θ ≈ π/6
                         [1                             0;
                         s₁*exp(8im/3*z^3+2im*x*z)     1]
-                    elseif angle(z) ≈ π/2
+                    elseif θ ≈ π/2
                         [1                 s₂*exp(-8im/3*z^3-2im*x*z);
                         0                 1]
-                    elseif angle(z) ≈ 5π/6
+                    elseif θ ≈ 5π/6
                         [1                             0;
                         s₃*exp(8im/3*z^3+2im*x*z)     1]
-                    elseif angle(z) ≈ -π/6
+                    elseif θ ≈ -π/6
                         [1                -s₃*exp(-8im/3*z^3-2im*x*z);
                         0                 1]
-                    elseif angle(z) ≈ -π/2
+                    elseif θ ≈ -π/2
                         [1                             0;
                         -s₂*exp(8im/3*z^3+2im*x*z)    1]
-                    elseif angle(z) ≈ -5π/6
+                    elseif θ ≈ -5π/6
                         [1                -s₁*exp(-8im/3*z^3-2im*x*z);
                         0                 1]
+                    else
+                        throw(ArgumentError("no ray at angle $θ")) # so the return type is inferred as a Matrix
                     end
-                        , Γ);
-        sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
-        V = Fun(V4, sp)
+        # jumps on the rays with angles θs, where Φ₊ = GΦ₋
+        G = θs -> ⊎((expand(Gf(θ, z) for z in Segment(0, 2.5exp(im*θ))) for θ in θs)...)
 
-        @test stieltjes(V,1+im)+I ≈ Φ(1+im)
+        # construct true solution using 4 rays
+        G₄ = G((π/6, 5π/6, -5π/6, -π/6))
+        Φ = rhsolve(G₄, n)
+        z = exp(im*π/6)
+        @test Φ(z * ⁺) ≈ Φ(z-eps())
+        @test Φ(z * ⁻) ≈ Φ(z+eps())
+        @test Φ(z - eps()) ≈ G₄[z]*Φ(z + eps())
 
-        U = V*(-2π*im)
-
-        U1 = U[1,:]
-        @test cauchy(U1,1+im)+[1,0] ≈ Φ(1+im)[1,:]
-        @test abs(sum(first.(components(U1[1])))) ≤ 100eps()
-        @test abs(sum(first.(components(U1[2])))) ≤ 100eps()
-
-
-        U11 = U1[1]
-        n = ncoefficients(U11)
-        C₋ = fpcauchymatrix(space(U11), n, n)
-        pts = collocationpoints(space(U11), n)
-        c = C₋*coefficients(U11)
-
-        @test c[1] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,1))))
-        @test c[2] ≈ cauchy(U11,pts[2])
-        @test c[150] ≈ finitepart(cauchy(U11,orientedleftendpoint(component(Γ,1))⁻))
-        @test c[151] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,2))))
-
-        n = ncoefficients(U1)
-        L = rhmatrix(transpose(G),n)
-        vals = collocationvalues(transpose(G)-I, n)
-        pts = collocationpoints(space(U1),n)
-
-        c = L*coefficients(U1)
-        @test c ≈ vals[:,1]
-
-        @test coefficients(U1) ≈ L \ vals[:,1]
+        G₆ = G((π/6, π/2, 5π/6, -5π/6, -π/2, -π/6))
+        Φ = rhsolve(G₆, n)
+        @test Φ(z - eps()) ≈ G₄[z]*Φ(z + eps())
     end
 end
 

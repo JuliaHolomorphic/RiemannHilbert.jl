@@ -132,3 +132,25 @@ RecurrenceRelationshipArrays.RecurrenceArray(z::Directed, (A,B,C), data::Abstrac
 
 RecurrenceRelationshipArrays.RecurrenceArray(z::AbstractVector{<:Directed}, (A,B,C), data::AbstractMatrix) =
     RecurrenceArray(undirected.(z), (A,B,C), undirected.(data))
+
+# The side of the contour only makes sense on the piece of the contour that the point lies on:
+# elsewhere Directed gives an analytic continuation, e.g. from the minus side of a piece whose
+# plus side contains the point. So the direction is dropped for pieces not containing the point.
+
+# a point near where z tends to, from the direction it approaches from
+limitpoint(z::Number) = z
+function limitpoint(z::PowerNumber)
+    A,B,α,β = PowerNumbers.terms(z)
+    h = 1E-6
+    A*h^α + (isfinite(β) ? B*h^β : zero(B))
+end
+limitpoint(z::Complex{<:PowerNumber}) = complex(limitpoint(real(z)), limitpoint(imag(z)))
+
+onpiece(x, ax) = x in ax
+# allow for roundoff in the imaginary part, e.g. from mapping a point on a Segment to the canonical interval
+onpiece(x::Complex, ax::Inclusion{<:Real}) = abs(imag(x)) ≤ 1000eps(float(eltype(ax)))*max(1,abs(x)) && real(x) in ax
+
+function SingularIntegrals.stieltjes(P::QuasiArrays.SubQuasiArray{<:Any,2}, z::Directed)
+    z̃ = onpiece(limitpoint(undirected(z)), axes(P,1)) ? z : undirected(z)
+    SingularIntegrals.stieltjes_layout(ContinuumArrays.MemoryLayout(P), P, z̃)
+end

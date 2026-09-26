@@ -255,21 +255,32 @@ rhexpansion(sp, c, n) = rhexpansion_domain(domain(sp), sp, c, n)
 rhexpansion_domain(_, sp, c, n) = sp[:,1:n] * c
 rhexpansion_domain(::UnionDomain, sp, c, n) = ⊎(ntuple(k -> sp.args[k][:,1:n] * c[(k-1)*n .+ (1:n)], length(sp.args))...)
 
-rhsolve(g, n) = rhsolve_eltype(eltype(g), g, n)
-function rhsolve_eltype(_, g, n)
+# solve the singular integral equation for the density u, so that φ = 1 + 𝒞u (Φ = I + 𝒞U for matrix-valued G,
+# where U is a matrix of scalar expansions)
+rh_sie_solve(g, n) = rh_sie_solve_eltype(eltype(g), g, n)
+function rh_sie_solve_eltype(_, g, n)
     g_v = collocationvalues(g,n) .- 1
-    u = rhexpansion(basis(g), rhmatrix(g,n) \ g_v, n)
-    z -> 1 + cauchy(u,z)
+    rhexpansion(basis(g), rhmatrix(g,n) \ g_v, n)
 end
 
-function rhsolve_eltype(::Type{<:AbstractMatrix}, G, n)
+function rh_sie_solve_eltype(::Type{<:AbstractMatrix}, G, n)
     sp = scalarbasis(basis(G))
     𝐆 = collocationvalues(G, n)
     N = checksquare(first(𝐆))
     R = reduce(hcat, [reduce(vcat, [getindex.(𝐆, k, j) .- (k == j) for k = 1:N]) for j = 1:N])
     cfs = rhmatrix(G, n) \ R
     m = size(cfs,1) ÷ N # coefficients per entry
-    U = [rhexpansion(sp, cfs[(k-1)*m .+ (1:m), j], n) for k = 1:N, j = 1:N]
+    [rhexpansion(sp, cfs[(k-1)*m .+ (1:m), j], n) for k = 1:N, j = 1:N]
+end
+
+rhsolve(g, n) = rhsolve_eltype(eltype(g), g, n)
+function rhsolve_eltype(_, g, n)
+    u = rh_sie_solve(g, n)
+    z -> 1 + cauchy(u,z)
+end
+
+function rhsolve_eltype(::Type{<:AbstractMatrix}, G, n)
+    U = rh_sie_solve(G, n)
     z -> I + map(u -> cauchy(u,z), U)
 end
 
