@@ -352,7 +352,11 @@ end
     𝐟 = expand([exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2)] for x in ChebyshevInterval())
     n = 200
     C⁻ = fpstieltjesmatrix((n,n), domain(𝐟))
-    # [C⁻ C⁻] * components(𝐟)
+    c = mortar([coefficients(𝐟)[getindex.(Block.(1:n),k)] for k = 1:2])
+    𝐱 = collocationpoints(domain(𝐟), n)
+    @test [C⁻ zero(C⁻); zero(C⁻) C⁻] * c ≈ vec(transpose(stack(stieltjes.(Ref(𝐟), 𝐱 .- eps()im))))
+
+
 #     C = fpstieltjesmatrix(sp, ns, ns)
 #     C1 = fpstieltjesmatrix(sp[1], ns[1], ns[1])
 #     C2 = fpstieltjesmatrix(sp[2], ns[2], ns[2])
@@ -405,7 +409,7 @@ end
 @testset "rhsolve" begin
     @testset "-1 .. 1" begin
         sp = Legendre()
-        g = expand(sp, x-> 1 -0.3exp(-40x^2))
+        g = expand(sp, x-> 1 - 0.3exp(-40x^2))
         n = 200
         𝐱 = collocationpoints(domain(sp), n)
         g_v = g[𝐱] .- 1
@@ -419,7 +423,20 @@ end
         @test φ(0.1⁺)  ≈ g[0.1]φ(0.1⁻)
     end
 
-#     @testset "-1 .. 0 and 0 .. 1" begin
+    @testset "-1 .. 0 and 0 .. 1" begin
+        g = expand(1-0.3exp(-40x^2) for x in UnionDomain(-1..0, 0..1))
+        n = 200
+        A = rhmatrix(g, n)
+        𝐱 = collocationpoints(domain(g), n)
+        u = expand(g .- 1)
+        A * vcat(getindex.(coefficients.(components(g)), Ref(1:n))...)
+        @test cauchy.(Ref(g), 𝐱 .+ eps()im) - g[𝐱] .* cauchy.(Ref(g), 𝐱 .- eps()im)  ≈
+                    g[𝐱] - (g[𝐱] .- 1) .* cauchy.(Ref(g), 𝐱 .- eps()im) 
+    
+
+        φ = rhsolve(g, n)
+        𝐱 = collocationpoints(domain(g), n)
+
 #         sp = Legendre(-1 .. 0) ∪ Legendre(0 .. 1)
 #         u_1 = u
 #         u_ex = Fun(x->u_1(x), sp)

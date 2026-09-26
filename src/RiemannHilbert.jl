@@ -72,7 +72,7 @@ function collocationpoints(d::IntervalOrSegment{T}, m::Int) where T
     affine(i, d)[collocationpoints(i, m)]
 end
 
-collocationpoints(d::UnionDomain, M::Block{1}) = BlockVcat(collocationpoints.(components(d), Int(M))...)
+collocationpoints(d::UnionDomain, M::Int) = BlockVcat(collocationpoints.(components(d), M)...)
 
 # collocationpoints(d::UnionDomain, ms::AbstractVector{Int}) = vcat(collocationpoints.(pieces(d), ms)...)
 # collocationpoints(d::UnionDomain, m::Int) = collocationpoints(d, pieces_npoints(d,m))
@@ -179,13 +179,17 @@ end
 #     ret
 # end
 
+evaluationmatrix_domain(_, P, n) = P[collocationpoints(domain(P), n),1:n]
+evaluationmatrix_domain(::UnionDomain, P, n) = mortar(Diagonal([evaluationmatrix.(P.args, n)...]))
+evaluationmatrix(P, n) = evaluationmatrix_domain(domain(P), P, n)
+
 function rhmatrix(g, n)
     sp = basis(g)
     d = domain(sp)
     C₋ = fpcauchymatrix((n, n), d)
     𝐱 = collocationpoints(d, n)
     𝐠 = g[𝐱] .- 1
-    E = sp[𝐱,1:n]
+    E = evaluationmatrix(sp, n)
     C₋ .= 𝐠 .* C₋
     E .- C₋
 end
