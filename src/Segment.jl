@@ -180,4 +180,7 @@ last(x::Inclusion{<:Any, <:Segment}) = rightendpoint(x.domain)
 
 QuasiArrays.cardinality(::Segment) = ℵ₁
 legendre(d::Segment{T}) where T = Legendre{float(real(T))}()[affine(d,ChebyshevInterval{real(T)}()), :]
-ContinuumArrays.basis_axes(ax::Inclusion{<:Any,<:Segment}, v) = convert(AbstractQuasiMatrix{ContinuumArrays._any_eltype(v)}, legendre(ax))
+# points on a complex Segment map to real points, up to roundoff in the imaginary part
+ContinuumArrays.affine_getindex(A::ContinuumArrays.AffineMap{<:Real,<:Inclusion{<:Any,<:Segment}}, k) = real.(A.A*A.x[k] .+ A.b)
+# use the same eltype dispatch as intervals, so that, e.g., matrix-valued functions are expanded entrywise
+ContinuumArrays.basis_axes(ax::Inclusion{<:Any,<:Segment}, v) = ClassicalOrthogonalPolynomials.basis_axes_eltype(ax, ContinuumArrays._any_eltype(v), v)

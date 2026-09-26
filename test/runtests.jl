@@ -1,7 +1,7 @@
 using RiemannHilbert, PowerNumbers, SingularIntegrals, ClassicalOrthogonalPolynomials, ContinuumArrays, Statistics, BlockArrays, Test, DomainSets, LinearAlgebra
 import PowerNumbers: logpart, realpart
 import IntervalSets: leftendpoint, rightendpoint, endpoints, Interval
-import RiemannHilbert: intervalsign, orientedleftendpoint, orientedrightendpoint, fpstieltjesmatrix
+import RiemannHilbert: intervalsign, orientedleftendpoint, orientedrightendpoint, fpstieltjesmatrix, collocationvalues
 
 @testset "Segment" begin
     @testset "construction and conversion" begin
@@ -288,7 +288,7 @@ end
         @test C[Block(2,2)] == fpstieltjesmatrix((n,n), 0..1)
 
         v = components(f)
-        @test C * [coefficients(v[1])[1:n]; coefficients(v[2])[1:n]] ≈ [stieltjes(f, x) for x in collocationpoints(domain(f), Block(n)) .- eps()im]
+        @test C * [coefficients(v[1])[1:n]; coefficients(v[2])[1:n]] ≈ [stieltjes(f, x) for x in collocationpoints(domain(f), n) .- eps()im]
         @test norm(C) ≤ 300
 
         g = expand(exp(-40(x-0.1)^2) for x in -1..1)
@@ -355,55 +355,6 @@ end
     c = mortar([coefficients(𝐟)[getindex.(Block.(1:n),k)] for k = 1:2])
     𝐱 = collocationpoints(domain(𝐟), n)
     @test [C⁻ zero(C⁻); zero(C⁻) C⁻] * c ≈ vec(transpose(stack(stieltjes.(Ref(𝐟), 𝐱 .- eps()im))))
-
-
-#     C = fpstieltjesmatrix(sp, ns, ns)
-#     C1 = fpstieltjesmatrix(sp[1], ns[1], ns[1])
-#     C2 = fpstieltjesmatrix(sp[2], ns[2], ns[2])
-
-#     @test C*coefficients(f) ≈ [C1*coefficients(f[1]) ; C2*coefficients(f[2])]
-
-#     sp = ArraySpace(Legendre(), 2, 2)
-#     f = Fun(x->[exp(-40(x-0.1)^2) sin(x-0.1)exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2) airyai(x-0.1)*exp(-40(x-0.1)^2)], sp)
-#     ns = ncoefficients.(Array(f))
-#     C = fpstieltjesmatrix(sp, ns, ns)
-#     C11 = fpstieltjesmatrix(sp[1,1], ns[1,1], ns[1,1])
-#     C21 = fpstieltjesmatrix(sp[2,1], ns[2,1], ns[2,1])
-#     C12 = fpstieltjesmatrix(sp[1,2], ns[1,2], ns[1,2])
-#     C22 = fpstieltjesmatrix(sp[2,2], ns[2,2], ns[2,2])
-
-#     @test C[1:ns[1], 1:4:end] ≈ C11
-#     @test norm(C[1:ns[1], 2:4:end]) ≤ 100eps()
-#     @test norm(C[1:ns[1], 3:4:end]) ≤ 100eps()
-#     @test norm(C[1:ns[1], 4:4:end]) ≤ 100eps()
-
-#     @test C[ns[1]+1:ns[1]+ns[2], 2:4:end] ≈ C21
-
-#     @test C*coefficients(f) ≈ [C11*coefficients(f[1,1]) ; C21*coefficients(f[2,1]) ; C12*coefficients(f[1,2]) ; C22*coefficients(f[2,2])]
-
-
-#     sp = ArraySpace(Legendre(-1 .. 0) ∪ Legendre(0 .. 1), 2)
-#     f = Fun(x->[exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2)], sp)
-#     ns = ncoefficients.(Array(f))
-#     C = fpstieltjesmatrix(sp, ns, ns)
-
-#     C1 = fpstieltjesmatrix(sp[1], ns[1], ns[1])
-#     C2 = fpstieltjesmatrix(sp[2], ns[2], ns[2])
-
-
-#     @test C*coefficients(f) ≈ [C1*coefficients(f[1]) ; C2*coefficients(f[2])]
-
-#     sp = ArraySpace(Legendre(-1 .. 0) ∪ Legendre(0 .. 1), 2, 2)
-#     f = Fun(x->[exp(-40(x-0.1)^2) sin(x-0.1)exp(-40(x-0.1)^2); cos(x-0.1)*exp(-40(x-0.1)^2) airyai(x-0.1)*exp(-40(x-0.1)^2)], sp)
-#     ns = ncoefficients.(Array(f))
-#     C = fpstieltjesmatrix(sp, ns, ns)
-
-#     C11 = fpstieltjesmatrix(sp[1,1], ns[1,1], ns[1,1])
-#     C21 = fpstieltjesmatrix(sp[2,1], ns[2,1], ns[2,1])
-#     C12 = fpstieltjesmatrix(sp[1,2], ns[1,2], ns[1,2])
-#     C22 = fpstieltjesmatrix(sp[2,2], ns[2,2], ns[2,2])
-
-#     @test C*coefficients(f) ≈ [C11*coefficients(f[1,1]) ; C21*coefficients(f[2,1]) ; C12*coefficients(f[1,2]) ; C22*coefficients(f[2,2])]
 end
 
 @testset "rhsolve" begin
@@ -429,415 +380,144 @@ end
         A = rhmatrix(g, n)
         𝐱 = collocationpoints(domain(g), n)
         u = expand(g .- 1)
-        g_v = components(g)
-        A * vcat(getindex.(coefficients.(components(u)), Ref(1:n))...)
-        @test 
-        findmax(abs.(cauchy.(Ref(u), 𝐱 .+ eps()im) - g[𝐱] .* cauchy.(Ref(u), 𝐱 .- eps()im)  -
-                    u[𝐱] - (g[𝐱] .- 1) .* cauchy.(Ref(u), 𝐱 .- eps()im) ))
-
-        cauchy(u, eps()im) - g[0] * cauchy(u, -eps()im)
-        cauchy(u, h*im) -cauchy(u, -h*im)
-        u[0.0]
+        g_v = collocationvalues(g, n)
+        u_v = collocationvalues(u, n)
+        
+        @test A * vcat(getindex.(coefficients.(components(u)), Ref(1:n))...) ≈ cauchy.(Ref(u), 𝐱 .+ eps()im) - g_v .* cauchy.(Ref(u), 𝐱 .- eps()im) ≈
+                    u_v - (g_v .- 1) .* cauchy.(Ref(u), 𝐱 .- eps()im) 
 
         φ = rhsolve(g, n)
-        𝐱 = collocationpoints(domain(g), n)
+        @test φ(0.1 * ⁺) ≈ g[0.1]φ(0.1 * ⁻)
+        @test φ((-0.1) * ⁺) ≈ g[-0.1]φ((-0.1) * ⁻)
+    end
 
-#         sp = Legendre(-1 .. 0) ∪ Legendre(0 .. 1)
-#         u_1 = u
-#         u_ex = Fun(x->u_1(x), sp)
-#         g_1 = 1-0.3Fun(x->exp(-40x^2), Legendre())
+    @testset "Segment(0,-1) and 0..1" begin
 
-#         g = 1-0.3Fun(x->exp(-40x^2), sp)
-
-#         n = 2ncoefficients(g)
-#         g = pad(g,n)
-#         u_ex = pad(u_ex,n)
-#         @test (1+cauchy(u_ex,0.1⁺)) ≈ g(0.1)*(1+cauchy(u_ex,0.1⁻))
-
-#         C₋ = fpcauchymatrix(sp, n, n)
-#         pts = RiemannHilbert.collocationpoints(sp, n)
-
-#         @test transpose(C₋[1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[1]-eps()im)
-#         @test transpose(C₋[5,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[5]-eps()im)
-#         @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, 0.0-eps()im)
-#         @test transpose(C₋[end-1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[end-1]-eps()im)
-#         @test transpose(C₋[n÷2,:])*coefficients(u_ex) ≈ cauchy(u_ex,-1.0-eps())
-#         @test transpose(C₋[(n÷2)+1,:])*coefficients(u_ex) ≈ cauchy(u_ex,1.0+eps())
-
-#         @test C₋*coefficients(u_ex) ≈ cauchy.(u_ex, pts.-eps()im)
-#         g_v = RiemannHilbert.collocationvalues(g-1, n)
-#         @test g_v ≈ g.(pts).-1
-#         G = Diagonal(g_v)
-
-#         @test G*g_v ≈ (g.(pts) .- 1).^2
-
-#         g1 = component(g,2)
-#         pts1 = RiemannHilbert.collocationpoints(component(sp,2), n÷2)
-#         E1=RiemannHilbert.evaluationmatrix(component(sp,1), length(pts1))
-
-#         @test E1*g1.coefficients ≈ g1.(pts1)
-
-#         E = RiemannHilbert.evaluationmatrix(sp, n)
-#         @test E*coefficients(g) ≈ g.(pts)
-
-#         @test (g.(pts).-1).*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-#         @test G*(C₋*coefficients(g)) ≈ (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-
-#         L = E - G*C₋
-#         @test L*coefficients(g) ≈ g.(pts) - (g.(pts).-1).*cauchy.(g, pts.-0.000000001im)
-
-#         @test L == rhmatrix(g,n)
-
-#         u = Fun(sp, rhmatrix(g,n) \ g_v)
-#         φ = z -> 1 + cauchy(u,z)
-#         @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
-
-#         @test 1+cauchy(u)(0.1+0.2im) ≈ φ(0.1+0.2im)
-#         @test (1+cauchy(u) )(0.1+0.2im) ≈ φ(0.1+0.2im)
-#         @test (1+cauchy(u) )(0.1⁻) ≈ φ(0.1⁻)
-
-#         @time φ = rhsolve(g, 2ncoefficients(g))
-#         @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
-#     end
-
-#     @testset "0..-1 and 0..1" begin
-#         sp = Legendre(Segment(0 , -1)) ∪ Legendre(0 .. 1)
-#         g = Fun(x->x ≥ 0 ? 1-0.3exp(-40x^2) : inv(1-0.3exp(-40x^2)), sp)
-#         u_1 = u
-#         u_ex = Fun(x->sign(x)u_1(x), sp)
-
-#         n = 2ncoefficients(g)
-#         g = pad(g,n)
-#         u_ex = pad(u_ex,n)
-#         @test (1+cauchy(u_ex,0.1⁺)) ≈ g(0.1)*(1+cauchy(u_ex,0.1⁻))
-
-#         C₋ = fpcauchymatrix(sp, n, n)
-#         pts = RiemannHilbert.collocationpoints(sp, n)
-
-#         @test transpose(C₋[1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[1]+eps()im)
-#         @test transpose(C₋[5,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[5]+eps()im)
-#         @test transpose(C₋[n÷2,:])*coefficients(u_ex) ≈ cauchy(u_ex,0.0+eps()im)
-#         @test transpose(C₋[(n÷2)+1,:])*coefficients(u_ex) ≈ cauchy(u_ex,1.0+eps())
-#         @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, pts[end]-eps()im)
-#         @test transpose(C₋[end,:])*coefficients(u_ex) ≈ cauchy(u_ex, 0.0-eps()im)
-#         @test transpose(C₋[end-1,:])*coefficients(u_ex) ≈ cauchy(u_ex,pts[end-1]-eps()im)
-
-#         @test C₋*coefficients(u_ex) ≈ [cauchy.(u_ex, pts[1:n÷2].+eps()im); cauchy.(u_ex, pts[(n÷2)+1:end].-eps()im)]
-#         g_v = RiemannHilbert.collocationvalues(g-1, n)
-
-#         g1 = component(g,1)
-#         pts1 = RiemannHilbert.collocationpoints(component(sp,1), n÷2)
-#         E1=RiemannHilbert.evaluationmatrix(component(sp,1), length(pts1))
-
-#         @test E1*g1.coefficients ≈ g1.(pts1)
-
-#         g2 = component(g,2)
-#         pts2 = RiemannHilbert.collocationpoints(component(sp,2), n÷2)
-
-#         @test g_v ≈ [g1.(pts1).-1; g2.(pts2).-1]
-#         G = Diagonal(g_v)
-
-#         @test g1.(pts1) ≈ g.(pts1)
-#         @test_broken g2.(pts2) ≈ g.(pts2) # evaluation at 0
-#         @test_broken G*g_v ≈ (g.(pts) .- 1).^2
-
-#         E = RiemannHilbert.evaluationmatrix(sp, n)
-#         @test E[1:end-1,:]*coefficients(g) ≈ g.(pts[1:end-1])
-#         @test transpose(E[end,:])*coefficients(g) ≈ component(g,2)(0.0)
-
-#         @test (g2.(pts2).-1).*(C₋[(n÷2)+1:end,:]*coefficients(u_ex)) ≈
-#             (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)
-#         @test (g.(pts1).-1).*(C₋[1:n÷2,:]*coefficients(u_ex)) ≈
-#             (g.(pts1).-1).*cauchy.(u_ex, pts1.+0.000000001im)
-#         @test (g.(pts2).-1).*(C₋[(n÷2)+1:end,:]*coefficients(u_ex)) ≈
-#             (g.(pts2).-1).*cauchy.(u_ex, pts2.-0.000000001im)
-
-#         u_ex1,u_ex2 = components(u_ex)
-#         @test (C₋*coefficients(u_ex))[ncoefficients(u_ex1)+1:end] ≈ cauchy.(u_ex, pts2.-eps()im)
-#         @test G*C₋*coefficients(u_ex) ≈ [(g1.(pts1).-1).*cauchy.(u_ex, pts1.+eps()im);
-#                                          (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)]
-
-#         L = E - G*C₋
-#         @test L*coefficients(u_ex) ≈ [u_ex1.(pts1) - (g1.(pts1).-1).*cauchy.(u_ex, pts1.+eps()im);
-#                                         u_ex2.(pts2) - (g2.(pts2).-1).*cauchy.(u_ex, pts2.-eps()im)]
-
-#         @test L == rhmatrix(g,n)
-
-#         u = Fun(sp, rhmatrix(g,n) \ g_v)
-#         φ1 = z -> 1 + cauchy(u,z)
-#         @test φ1(0.1⁺)  ≈ g(0.1)φ1(0.1⁻)
-#         @test φ1(-0.1⁺)  ≈ g(-0.1)φ1(-0.1⁻)
-
-#         @test 1+cauchy(u)(0.1+0.2im) ≈ φ1(0.1+0.2im)
-#         @test (1+cauchy(u) )(0.1+0.2im) ≈ φ1(0.1+0.2im)
-#         @test (1+cauchy(u) )(0.1⁻) ≈ φ1(0.1⁻)
-#         @test (1+cauchy(u) )(0.1⁺) ≈ φ1(0.1⁺)
-#         @test (1+cauchy(u) )(-0.1⁻) ≈ φ1(-0.1⁻)
-#         @test (1+cauchy(u) )(-0.1⁺) ≈ φ1(-0.1⁺)
-
-#         @time φ = rhsolve(g, 2ncoefficients(g))
-#         @test φ(0.1⁺)  ≈ g(0.1)φ(0.1⁻)
-#     end
-
-#     @testset "Chebyshev g" begin
-#         G = Fun(x -> 1 + exp(-30x^2), -1..1)
-#         Φ = rhsolve(G, 200)
-#         @test Φ(0.1⁺) ≈ G(0.1)Φ(0.1⁻)
-#     end
+    end
 end
 
-# @testset "Matrix rhsolve" begin
-#     sp = ArraySpace(Legendre(), 2)
+@testset "Matrix rhsolve" begin
 #     f = Fun(Fun(x->[cos(x);sin(x)], Chebyshev()), ArraySpace(Legendre(), 2))
-#     G = Fun(Fun(x->[1 exp(-40x^2); 0.1exp(-40x^2) 1], Chebyshev()), ArraySpace(Legendre(), 2, 2))
+    Gf = x -> [1 exp(-40x^2); 0.1exp(-40x^2) 1]
+    n = 200
+    G = expand(Gf(x) for x in ChebyshevInterval())
+    Φ = rhsolve(G, n)
+    @test Φ(0.1 * ⁺) ≈ G[0.1] * Φ(0.1 * ⁻)
+    GU = expand(Gf(x) for x in UnionDomain(-1..0, 0..1))
+    ΦU = rhsolve(GU, n)
+    @test ΦU(0.1 * ⁺) ≈ GU[0.1] * ΦU(0.1 * ⁻)
+    @test ΦU((-0.3) * ⁺) ≈ GU[-0.3] * ΦU((-0.3) * ⁻)
+    @test ΦU(2.0+im) ≈ Φ(2.0+im)
+end
 
-#     n = 2ncoefficients(G)
-#     E = RiemannHilbert.evaluationmatrix(sp, n)
-#     pts = RiemannHilbert.collocationpoints(sp, n÷2)
+@testset "4 rays" begin
+    s₁ = im
+    s₃ = -im
+    G = expand([1 0; s₁*exp(8im/3*z^3) 1] for z in Segment(0, 2.5exp(im*π/6))) ⊎
+        expand([1 0; s₃*exp(8im/3*z^3) 1] for z in Segment(0, 2.5exp(im*5π/6))) ⊎
+        expand([1 -s₃*exp(-8im/3*z^3); 0 1] for z in Segment(0, 2.5exp(-im*π/6))) ⊎
+        expand([1 -s₁*exp(-8im/3*z^3); 0 1] for z in Segment(0, 2.5exp(-im*5π/6)))
 
-#     @test E*coefficients(pad(f,n)) ≈ [f[1].(pts); f[2].(pts)]
-
-
-#     M = RiemannHilbert.multiplicationmatrix(G-I, n)
-#     @test M*(E*coefficients(pad(f,n))) ≈ mapreduce(f -> f.(pts), vcat, (G-I)*f)
-
-#     L = E - M*fpcauchymatrix(sp, n,n)
-#     u1 = L \ mapreduce(f -> f.(pts), vcat, (G-I)[:,1])
-#     u2 = L \ mapreduce(f -> f.(pts), vcat, (G-I)[:,2])
-#     z=2+I
-#         Φ = z -> I + [cauchy(Fun(sp, u1),z) cauchy(Fun(sp, u2),z)]
-
-#     @test Φ(0.1+eps()im) ≈ G(0.1)*Φ(0.1-eps()im)
-
-#     @test RiemannHilbert.rhmatrix(G, n) == L
-
-#     @test RiemannHilbert.collocationvalues(G-I, n) ≈
-#         [RiemannHilbert.collocationvalues((G-I)[:,1], n) RiemannHilbert.collocationvalues((G-I)[:,2], n)]
-
-#     Φ = rhsolve(G,n)
-#     @test G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
-# end
-
-# @testset "Matrix rhsolve two interval" begin
-#     sp = ArraySpace(Legendre(-1 .. 0) ∪ Legendre(0 .. 1), 2)
-#     G = Fun(x->[1 exp(-40x^2); 0.1exp(-40x^2) 1], ArraySpace(sp[1], 2, 2))
-
-#     n=2ncoefficients(G)
-#     Φ = rhsolve(G,n)
-
-#     @test G(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
-#     U = RiemannHilbert.rh_sie_solve(G,n)
-
-#     U1 = U[:,1]
-#     g = G
-#     sp = space(g)[:,1]
-#     C₋ = fpcauchymatrix(sp, n, n)
-#     G = RiemannHilbert.multiplicationmatrix(g-I, n)
-#     E = RiemannHilbert.evaluationmatrix(sp, n)
-
-#     pts = RiemannHilbert.collocationpoints(sp, n÷2)
-#     @test last(E*coefficients(U1)) ≈ U1(0.00000000001)[2]
-#     @test last(C₋*coefficients(U1)) ≈ cauchy(U1[2], 0.00000000001-eps()*im)
-#     @test cauchy(U1[1], 0.00000000001-eps()*im) ≈ (C₋*coefficients(U1))[n÷2]
-#     @test last(G*C₋*coefficients(U1)) ≈ ((g(0.00000000001)-I)*cauchy(U1, 0.00000000001-eps()*im))[2]
+    Φ = rhsolve(G, 100)
+    for θ in (π/6, 5π/6, -π/6, -5π/6)
+        s, ν = exp(im*θ), im*exp(im*θ) # point on the ray and its left normal (+ side)
+        @test Φ(s + 1E-10ν) ≈ G[s] * Φ(s - 1E-10ν) rtol=1E-6
+    end
+end
 
 
-#     @test RiemannHilbert.collocationvalues((g-I)[:,1], n)[end] ≈ 0.1
+@testset "6 rays" begin
+    @testset "HM on 6 rays" begin
+        s₁,s₂,s₃ = -im,0,im
+        @assert s₁ - s₂ + s₃ + s₁*s₂*s₃ ≈ 0
 
-#     sp = ArraySpace(Legendre(Segment(0 , -1)) ∪ Legendre(0 .. 1), 2)
-#     G = g = Fun(x-> x ≥ 0 ? [1 exp(-40x^2); 0.1exp(-40x^2) 1] : inv([1 exp(-40x^2); 0.1exp(-40x^2) 1]), ArraySpace(sp[1], 2, 2))
-#     n=2ncoefficients(G)
-#     Ũ1 = Fun(x-> x ≥ 0 ? U1(x) : -U1(x), sp, n÷2)
-#     @test cauchy(Ũ1, 0.1⁻) ≈ cauchy(Ũ1, 0.1-eps()im)
-#     @test cauchy(Ũ1, 0.1+eps()im) ≈ cauchy(U1, 0.1+eps()im)
-#     @test cauchy(Ũ1, -0.1+eps()im) ≈ cauchy(U1, -0.1+eps()im)
+        # construct true solution using 4 rays
+        Γ = Segment(0, 2.5exp(im*π/6)) ∪ Segment(0, 2.5exp(5im*π/6)) ∪
+        Segment(0, 2.5exp(-5im*π/6)) ∪ Segment(0, 2.5exp(-im*π/6))
+        sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
 
-#     L = rhmatrix(G, n)
-#     rhs = RiemannHilbert.collocationvalues((g-I)[:,1], n)
-#     @test rhs[end] ≈ 0.1
+        G = Fun( z -> if angle(z) ≈ π/6
+                            [1 0; s₁*exp(8im/3*z^3) 1]
+                        elseif angle(z) ≈ 5π/6
+                            [1 0; s₃*exp(8im/3*z^3) 1]
+                        elseif angle(z) ≈ -π/6
+                            [1 -s₃*exp(-8im/3*z^3); 0 1]
+                        elseif angle(z) ≈ -5π/6
+                            [1 -s₁*exp(-8im/3*z^3); 0 1]
+                        end
+                            , sp)
 
-#     Φ = rhsolve(G,n)
-
-#     g = G
-#     sp = space(g)[:,1]
-#     C₋ = fpcauchymatrix(sp, n, n)
-#     G = RiemannHilbert.multiplicationmatrix(g-I, n)
-#     E = RiemannHilbert.evaluationmatrix(sp, n)
-
-#     pts = RiemannHilbert.collocationpoints(sp, n÷2)
-
-#     @test last(E*coefficients(Ũ1)) ≈ Ũ1(0.00000000001)[2]
-#     @test last(C₋*coefficients(Ũ1)) ≈ cauchy(Ũ1[2], 0.00000000001-eps()*im)
-#     @test cauchy(Ũ1[1], 0.00000000001-eps()*im) ≈ (C₋*coefficients(Ũ1))[n÷2]
-#     @test G[[n÷2,n],[n÷2,n]] ≈ (g(0.00000000001)-I)
-
-#     @test last(G*C₋*coefficients(Ũ1)) ≈ transpose((g(0.00000000001)-I)[2,:])*cauchy(Ũ1, 0.00000000001-eps()*im)
-
-#     @test transpose(L[end,:])*coefficients(Ũ1) ≈ Ũ1(0.00000000001)[2] - transpose((g(0.00000000001)-I)[2,:])*cauchy(Ũ1, 0.00000000001-eps()*im)
-
-#     @test U1(0.00000000001)[2] - transpose((g(0.00000000001)-I)[2,:])*cauchy(U1, 0.00000000001-eps()*im) ≈ 0.1
-#     @test g(0.1)*Φ(0.1⁻) ≈ Φ(0.1⁺)
-# end
-
-# @testset "4 rays" begin
-#     Γ = Segment(0, 2.5exp(im*π/6)) ∪ Segment(0, 2.5exp(5im*π/6)) ∪
-#             Segment(0, 2.5exp(-5im*π/6)) ∪ Segment(0, 2.5exp(-im*π/6))
-#     sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
-
-#     s₁ = im
-#     s₃ = -im
-
-#     G = Fun( z -> if angle(z) ≈ π/6
-#                         [1 0; s₁*exp(8im/3*z^3) 1]
-#                     elseif angle(z) ≈ 5π/6
-#                         [1 0; s₃*exp(8im/3*z^3) 1]
-#                     elseif angle(z) ≈ -π/6
-#                         [1 -s₃*exp(-8im/3*z^3); 0 1]
-#                     elseif angle(z) ≈ -5π/6
-#                         [1 -s₁*exp(-8im/3*z^3); 0 1]
-#                     end
-#                         , sp)
-
-#     Φ = transpose(rhsolve(transpose(G), 2*4*100))
-
-#     s=exp(im*π/6)
-#     @test Φ((s)⁻)*G(s) ≈ Φ((s)⁺)
-#     @test map(g->first(components(g)[1]), G)*map(g->first(components(g)[2]), G)*
-#         map(g->first(components(g)[3]), G)*map(g->first(components(g)[4]), G) ≈ Matrix(I,2,2)
-
-#     for _=1:5
-#         @test RiemannHilbert.evaluationmatrix(sp[:,1], 32) ≈ RiemannHilbert.evaluationmatrix(sp[:,1], 32)
-#         @test RiemannHilbert.rhmatrix(G, 32) ≈ RiemannHilbert.rhmatrix(G, 32)
-#     end
-
-#     @test RiemannHilbert.rhmatrix(transpose(G), 900) ≈ RiemannHilbert.rhmatrix(transpose(G), 900)
-#     U = RiemannHilbert.rh_sie_solve(transpose(G), 2*4*100)
-#     @test -0.36706155154807807 ≈ sum(U[1,2])/(-π*im)
-
-#     G̃ = Fun( z -> if angle(z) ≈ π/6
-#                         [1 0; s₁*exp(8im/3*z^3) 1]
-#                     elseif angle(z) ≈ 5π/6
-#                         [1 0; s₃*exp(8im/3*z^3) 1]
-#                     elseif angle(z) ≈ -π/6
-#                         [1 -s₃*exp(-8im/3*z^3); 0 1]
-#                     elseif angle(z) ≈ -5π/6
-#                         [1 -s₁*exp(-8im/3*z^3); 0 1]
-#                     end
-#                         , Γ)
-
-#     Ũ = RiemannHilbert.rh_sie_solve(transpose(G̃), 2*4*100)
-
-#     @test rhmatrix(transpose(G), 2*4*100) ≈ rhmatrix(transpose(G̃), 2*4*100)
-#     @test -0.36706155154807807 ≈ sum(Ũ[1,2])/(-π*im)
-
-#     V = istieltjes(Φ)
-#     x = Fun(domain(V))
-
-#     @test 10.0I + sum.(Array(V)) + stieltjes(x*V, 10.0) ≈ 10.0Φ(10.0)
+        Φ = transpose(rhsolve(transpose(G), 2*6*100))
 
 
-#     # check rhmatrix relationship for below
-#     U = V*(-2π*im)
-#     U1 = U[1,:]
-#     n= ncoefficients(U1)
-#     L = rhmatrix(transpose(G),n)
-#     vals = collocationvalues(transpose(G)-I, n)
-#     @test L*coefficients(U1) ≈ vals[:,1]
-# end
+        # debug
+        V4 = istieltjes(Φ)
+        x = 0.0
+
+        @test stieltjes(V4,1+im)+I == Φ(1+im)
 
 
-# @testset "6 rays" begin
-#     @testset "HM on 6 rays" begin
-#         s₁,s₂,s₃ = -im,0,im
-#         @assert s₁ - s₂ + s₃ + s₁*s₂*s₃ ≈ 0
+        Γ = Segment(0, 2.5exp(im*π/6))   ∪
+        Segment(0, 2.5exp(im*π/2))       ∪
+        Segment(0, 2.5exp(5im*π/6))      ∪
+        Segment(0, 2.5exp(-5im*π/6))     ∪
+        Segment(0, 2.5exp(-im*π/2))      ∪
+        Segment(0, 2.5exp(-im*π/6));
 
-#         # construct true solution using 4 rays
-#         Γ = Segment(0, 2.5exp(im*π/6)) ∪ Segment(0, 2.5exp(5im*π/6)) ∪
-#         Segment(0, 2.5exp(-5im*π/6)) ∪ Segment(0, 2.5exp(-im*π/6))
-#         sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
+        G = Fun( z -> if angle(z) ≈ π/6
+                        [1                             0;
+                        s₁*exp(8im/3*z^3+2im*x*z)     1]
+                    elseif angle(z) ≈ π/2
+                        [1                 s₂*exp(-8im/3*z^3-2im*x*z);
+                        0                 1]
+                    elseif angle(z) ≈ 5π/6
+                        [1                             0;
+                        s₃*exp(8im/3*z^3+2im*x*z)     1]
+                    elseif angle(z) ≈ -π/6
+                        [1                -s₃*exp(-8im/3*z^3-2im*x*z);
+                        0                 1]
+                    elseif angle(z) ≈ -π/2
+                        [1                             0;
+                        -s₂*exp(8im/3*z^3+2im*x*z)    1]
+                    elseif angle(z) ≈ -5π/6
+                        [1                -s₁*exp(-8im/3*z^3-2im*x*z);
+                        0                 1]
+                    end
+                        , Γ);
+        sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
+        V = Fun(V4, sp)
 
-#         G = Fun( z -> if angle(z) ≈ π/6
-#                             [1 0; s₁*exp(8im/3*z^3) 1]
-#                         elseif angle(z) ≈ 5π/6
-#                             [1 0; s₃*exp(8im/3*z^3) 1]
-#                         elseif angle(z) ≈ -π/6
-#                             [1 -s₃*exp(-8im/3*z^3); 0 1]
-#                         elseif angle(z) ≈ -5π/6
-#                             [1 -s₁*exp(-8im/3*z^3); 0 1]
-#                         end
-#                             , sp)
+        @test stieltjes(V,1+im)+I ≈ Φ(1+im)
 
-#         Φ = transpose(rhsolve(transpose(G), 2*6*100))
+        U = V*(-2π*im)
 
-
-#         # debug
-#         V4 = istieltjes(Φ)
-#         x = 0.0
-
-#         @test stieltjes(V4,1+im)+I == Φ(1+im)
-
-
-#         Γ = Segment(0, 2.5exp(im*π/6))   ∪
-#         Segment(0, 2.5exp(im*π/2))       ∪
-#         Segment(0, 2.5exp(5im*π/6))      ∪
-#         Segment(0, 2.5exp(-5im*π/6))     ∪
-#         Segment(0, 2.5exp(-im*π/2))      ∪
-#         Segment(0, 2.5exp(-im*π/6));
-
-#         G = Fun( z -> if angle(z) ≈ π/6
-#                         [1                             0;
-#                         s₁*exp(8im/3*z^3+2im*x*z)     1]
-#                     elseif angle(z) ≈ π/2
-#                         [1                 s₂*exp(-8im/3*z^3-2im*x*z);
-#                         0                 1]
-#                     elseif angle(z) ≈ 5π/6
-#                         [1                             0;
-#                         s₃*exp(8im/3*z^3+2im*x*z)     1]
-#                     elseif angle(z) ≈ -π/6
-#                         [1                -s₃*exp(-8im/3*z^3-2im*x*z);
-#                         0                 1]
-#                     elseif angle(z) ≈ -π/2
-#                         [1                             0;
-#                         -s₂*exp(8im/3*z^3+2im*x*z)    1]
-#                     elseif angle(z) ≈ -5π/6
-#                         [1                -s₁*exp(-8im/3*z^3-2im*x*z);
-#                         0                 1]
-#                     end
-#                         , Γ);
-#         sp = ArraySpace(PiecewiseSpace(Legendre.(components(Γ))), 2,2)
-#         V = Fun(V4, sp)
-
-#         @test stieltjes(V,1+im)+I ≈ Φ(1+im)
-
-#         U = V*(-2π*im)
-
-#         U1 = U[1,:]
-#         @test cauchy(U1,1+im)+[1,0] ≈ Φ(1+im)[1,:]
-#         @test abs(sum(first.(components(U1[1])))) ≤ 100eps()
-#         @test abs(sum(first.(components(U1[2])))) ≤ 100eps()
+        U1 = U[1,:]
+        @test cauchy(U1,1+im)+[1,0] ≈ Φ(1+im)[1,:]
+        @test abs(sum(first.(components(U1[1])))) ≤ 100eps()
+        @test abs(sum(first.(components(U1[2])))) ≤ 100eps()
 
 
-#         U11 = U1[1]
-#         n = ncoefficients(U11)
-#         C₋ = fpcauchymatrix(space(U11), n, n)
-#         pts = collocationpoints(space(U11), n)
-#         c = C₋*coefficients(U11)
+        U11 = U1[1]
+        n = ncoefficients(U11)
+        C₋ = fpcauchymatrix(space(U11), n, n)
+        pts = collocationpoints(space(U11), n)
+        c = C₋*coefficients(U11)
 
-#         @test c[1] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,1))))
-#         @test c[2] ≈ cauchy(U11,pts[2])
-#         @test c[150] ≈ finitepart(cauchy(U11,orientedleftendpoint(component(Γ,1))⁻))
-#         @test c[151] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,2))))
+        @test c[1] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,1))))
+        @test c[2] ≈ cauchy(U11,pts[2])
+        @test c[150] ≈ finitepart(cauchy(U11,orientedleftendpoint(component(Γ,1))⁻))
+        @test c[151] ≈ finitepart(cauchy(U11,orientedrightendpoint(component(Γ,2))))
 
-#         n = ncoefficients(U1)
-#         L = rhmatrix(transpose(G),n)
-#         vals = collocationvalues(transpose(G)-I, n)
-#         pts = collocationpoints(space(U1),n)
+        n = ncoefficients(U1)
+        L = rhmatrix(transpose(G),n)
+        vals = collocationvalues(transpose(G)-I, n)
+        pts = collocationpoints(space(U1),n)
 
-#         c = L*coefficients(U1)
-#         @test c ≈ vals[:,1]
+        c = L*coefficients(U1)
+        @test c ≈ vals[:,1]
 
-#         @test coefficients(U1) ≈ L \ vals[:,1]
-#     end
-# end
+        @test coefficients(U1) ≈ L \ vals[:,1]
+    end
+end
 
 # include("test_nls.jl")

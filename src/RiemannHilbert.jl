@@ -13,7 +13,9 @@ import IntervalSets: leftendpoint, rightendpoint, endpoints, width, Interval
 import DomainSets: Domain, ChebyshevInterval, prectype, choice
 import LinearAlgebra: norm
 import Statistics: mean
-import ClassicalOrthogonalPolynomials: legendre, AbstractJacobiWeight
+import ClassicalOrthogonalPolynomials: legendre, AbstractJacobiWeight, SetindexInterlace
+using FillArrays: AbstractFill, getindex_value
+using LinearAlgebra: checksquare
 using PowerNumbers: realpart
 export ⁺, ⁻, Directed, undirected, Segment,
         mobius, tocanonical, tocanonicalD, fromcanonical, fromcanonicalD,
@@ -187,7 +189,13 @@ collocationvalues_domain(d, g, n) = g[collocationpoints(d, n)]
 collocationvalues_domain(::UnionDomain, g, n) = vcat(collocationvalues.(components(g), n)...)
 collocationvalues(g, n) = collocationvalues_domain(domain(g), g, n)
 
-function rhmatrix(g, n)
+# the scalar basis used for each entry of an array-valued expansion
+scalarbasis(P) = P
+scalarbasis(P::SetindexInterlace{<:Any,<:AbstractFill}) = getindex_value(P.args)
+scalarbasis(P::PiecewiseInterlace) = PiecewiseInterlace(map(scalarbasis, P.args)...)
+
+rhmatrix(g, n) = rhmatrix_eltype(eltype(g), g, n)
+function rhmatrix_eltype(_, g, n)
     sp = basis(g)
     d = domain(sp)
     C₋ = fpcauchymatrix((n, n), d)
@@ -196,6 +204,18 @@ function rhmatrix(g, n)
     E = evaluationmatrix(sp, n)
     C₋ .= 𝐠 .* C₋
     E .- C₋
+end
+
+# Φ₊ = G*Φ₋ with Φ = I + 𝒞U: each column of U satisfies Uⱼ - (G-I)𝒞₋Uⱼ = (G-I)eⱼ, so
+# block (k,l) is the scalar rhmatrix with 𝐠 replaced by the (k,l) entry of G-I
+function rhmatrix_eltype(::Type{<:AbstractMatrix}, G, n)
+    sp = scalarbasis(basis(G))
+    d = domain(sp)
+    C₋ = fpcauchymatrix((n, n), d)
+    E = evaluationmatrix(sp, n)
+    𝐆 = collocationvalues(G, n)
+    N = checksquare(first(𝐆))
+    mortar([Matrix((k == l) * E - Diagonal(getindex.(𝐆, k, l) .- (k == l)) * C₋) for k = 1:N, l = 1:N])
 end
 
 # function rhmatrix(g::MatrixFun, n)
@@ -230,12 +250,27 @@ end
 # rhspace(g::Fun{<:ArraySpace}) = array_rhspace(size(g), domain(g))
 # rhspace(g::Fun) = scalar_rhspace(domain(g))
 
-function rhsolve(g, n)
-    sp = basis(g)
-    𝐱 = collocationpoints(domain(sp), n)
-    g_v = g[𝐱] .- 1
-    u = sp[:,1:n] * (rhmatrix(g,n) \ g_v)
+# expansion in the first n functions of sp (of each piece, for a UnionDomain) with coefficients c
+rhexpansion(sp, c, n) = rhexpansion_domain(domain(sp), sp, c, n)
+rhexpansion_domain(_, sp, c, n) = sp[:,1:n] * c
+rhexpansion_domain(::UnionDomain, sp, c, n) = ⊎(ntuple(k -> sp.args[k][:,1:n] * c[(k-1)*n .+ (1:n)], length(sp.args))...)
+
+rhsolve(g, n) = rhsolve_eltype(eltype(g), g, n)
+function rhsolve_eltype(_, g, n)
+    g_v = collocationvalues(g,n) .- 1
+    u = rhexpansion(basis(g), rhmatrix(g,n) \ g_v, n)
     z -> 1 + cauchy(u,z)
+end
+
+function rhsolve_eltype(::Type{<:AbstractMatrix}, G, n)
+    sp = scalarbasis(basis(G))
+    𝐆 = collocationvalues(G, n)
+    N = checksquare(first(𝐆))
+    R = reduce(hcat, [reduce(vcat, [getindex.(𝐆, k, j) .- (k == j) for k = 1:N]) for j = 1:N])
+    cfs = rhmatrix(G, n) \ R
+    m = size(cfs,1) ÷ N # coefficients per entry
+    U = [rhexpansion(sp, cfs[(k-1)*m .+ (1:m), j], n) for k = 1:N, j = 1:N]
+    z -> I + map(u -> cauchy(u,z), U)
 end
 
 
