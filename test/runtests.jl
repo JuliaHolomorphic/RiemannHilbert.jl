@@ -429,10 +429,15 @@ end
         A = rhmatrix(g, n)
         𝐱 = collocationpoints(domain(g), n)
         u = expand(g .- 1)
-        A * vcat(getindex.(coefficients.(components(g)), Ref(1:n))...)
-        @test cauchy.(Ref(g), 𝐱 .+ eps()im) - g[𝐱] .* cauchy.(Ref(g), 𝐱 .- eps()im)  ≈
-                    g[𝐱] - (g[𝐱] .- 1) .* cauchy.(Ref(g), 𝐱 .- eps()im) 
-    
+        g_v = components(g)
+        A * vcat(getindex.(coefficients.(components(u)), Ref(1:n))...)
+        @test 
+        findmax(abs.(cauchy.(Ref(u), 𝐱 .+ eps()im) - g[𝐱] .* cauchy.(Ref(u), 𝐱 .- eps()im)  -
+                    u[𝐱] - (g[𝐱] .- 1) .* cauchy.(Ref(u), 𝐱 .- eps()im) ))
+
+        cauchy(u, eps()im) - g[0] * cauchy(u, -eps()im)
+        cauchy(u, h*im) -cauchy(u, -h*im)
+        u[0.0]
 
         φ = rhsolve(g, n)
         𝐱 = collocationpoints(domain(g), n)

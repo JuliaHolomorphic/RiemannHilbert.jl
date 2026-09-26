@@ -179,16 +179,20 @@ end
 #     ret
 # end
 
-evaluationmatrix_domain(_, P, n) = P[collocationpoints(domain(P), n),1:n]
+evaluationmatrix_domain(d, P, n) = P[collocationpoints(d, n),1:n]
 evaluationmatrix_domain(::UnionDomain, P, n) = mortar(Diagonal([evaluationmatrix.(P.args, n)...]))
 evaluationmatrix(P, n) = evaluationmatrix_domain(domain(P), P, n)
+
+collocationvalues_domain(d, g, n) = g[collocationpoints(d, n)]
+collocationvalues_domain(::UnionDomain, g, n) = vcat(collocationvalues.(components(g), n)...)
+collocationvalues(g, n) = collocationvalues_domain(domain(g), g, n)
 
 function rhmatrix(g, n)
     sp = basis(g)
     d = domain(sp)
     C₋ = fpcauchymatrix((n, n), d)
     𝐱 = collocationpoints(d, n)
-    𝐠 = g[𝐱] .- 1
+    𝐠 = collocationvalues(g, n) .- 1
     E = evaluationmatrix(sp, n)
     C₋ .= 𝐠 .* C₋
     E .- C₋
