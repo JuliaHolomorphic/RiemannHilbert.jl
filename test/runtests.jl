@@ -408,6 +408,16 @@ end
     @test ΦU(0.1 * ⁺) ≈ GU[0.1] * ΦU(0.1 * ⁻)
     @test ΦU((-0.3) * ⁺) ≈ GU[-0.3] * ΦU((-0.3) * ⁻)
     @test ΦU(2.0+im) ≈ Φ(2.0+im)
+
+    @testset "side" begin
+        Φᵣ = rhsolve(G, n; side=:right)
+        @test Φᵣ(0.1 * ⁺) ≈ Φᵣ(0.1 * ⁻) * G[0.1]
+        @test Φᵣ(2.0+im) ≈ transpose(rhsolve(expand(permutedims(Gf(x)) for x in ChebyshevInterval()), n)(2.0+im))
+        @test rhsolve(G, n; side=:left)(2.0+im) == Φ(2.0+im)
+        ΦUᵣ = rhsolve(GU, n; side=:right)
+        @test ΦUᵣ((-0.3) * ⁺) ≈ ΦUᵣ((-0.3) * ⁻) * GU[-0.3]
+        @test_throws ArgumentError rhsolve(G, n; side=:up)
+    end
 end
 
 @testset "4 rays" begin
