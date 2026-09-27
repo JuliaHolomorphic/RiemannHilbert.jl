@@ -402,20 +402,20 @@ end
     n = 200
     G = expand(Gf(x) for x in ChebyshevInterval())
     Φ = rhsolve(G, n)
-    @test Φ(0.1 * ⁺) ≈ G[0.1] * Φ(0.1 * ⁻)
+    @test Φ(0.1 * ⁺) ≈ Φ(0.1 * ⁻) * G[0.1]
     GU = expand(Gf(x) for x in UnionDomain(-1..0, 0..1))
     ΦU = rhsolve(GU, n)
-    @test ΦU(0.1 * ⁺) ≈ GU[0.1] * ΦU(0.1 * ⁻)
-    @test ΦU((-0.3) * ⁺) ≈ GU[-0.3] * ΦU((-0.3) * ⁻)
+    @test ΦU(0.1 * ⁺) ≈ ΦU(0.1 * ⁻) * GU[0.1]
+    @test ΦU((-0.3) * ⁺) ≈ ΦU((-0.3) * ⁻) * GU[-0.3]
     @test ΦU(2.0+im) ≈ Φ(2.0+im)
 
     @testset "side" begin
-        Φᵣ = rhsolve(G, n; side=:right)
-        @test Φᵣ(0.1 * ⁺) ≈ Φᵣ(0.1 * ⁻) * G[0.1]
-        @test Φᵣ(2.0+im) ≈ transpose(rhsolve(expand(permutedims(Gf(x)) for x in ChebyshevInterval()), n)(2.0+im))
-        @test rhsolve(G, n; side=:left)(2.0+im) == Φ(2.0+im)
-        ΦUᵣ = rhsolve(GU, n; side=:right)
-        @test ΦUᵣ((-0.3) * ⁺) ≈ ΦUᵣ((-0.3) * ⁻) * GU[-0.3]
+        @test rhsolve(G, n; side=:right)(2.0+im) == Φ(2.0+im)
+        Φₗ = rhsolve(G, n; side=:left)
+        @test Φₗ(0.1 * ⁺) ≈ G[0.1] * Φₗ(0.1 * ⁻)
+        @test Φₗ(2.0+im) ≈ transpose(rhsolve(expand(permutedims(Gf(x)) for x in ChebyshevInterval()), n)(2.0+im))
+        ΦUₗ = rhsolve(GU, n; side=:left)
+        @test ΦUₗ((-0.3) * ⁺) ≈ GU[-0.3] * ΦUₗ((-0.3) * ⁻)
         @test_throws ArgumentError rhsolve(G, n; side=:up)
     end
 end
@@ -431,7 +431,7 @@ end
     Φ = rhsolve(G, 100)
     for θ in (π/6, 5π/6, -π/6, -5π/6)
         s, ν = exp(im*θ), im*exp(im*θ) # point on the ray and its left normal (+ side)
-        @test Φ(s + 1E-10ν) ≈ G[s] * Φ(s - 1E-10ν) rtol=1E-6
+        @test Φ(s + 1E-10ν) ≈ Φ(s - 1E-10ν) * G[s] rtol=1E-6
     end
 end
 
@@ -465,7 +465,7 @@ end
                     else
                         throw(ArgumentError("no ray at angle $θ")) # so the return type is inferred as a Matrix
                     end
-        # jumps on the rays with angles θs, where Φ₊ = GΦ₋
+        # jumps on the rays with angles θs, where Φ₊ = Φ₋G
         G = θs -> ⊎((expand(Gf(θ, z) for z in Segment(0, 2.5exp(im*θ))) for θ in θs)...)
 
         # construct true solution using 4 rays
@@ -474,11 +474,11 @@ end
         z = exp(im*π/6)
         @test Φ(z * ⁺) ≈ Φ(z-eps())
         @test Φ(z * ⁻) ≈ Φ(z+eps())
-        @test Φ(z - eps()) ≈ G₄[z]*Φ(z + eps())
+        @test Φ(z - eps()) ≈ Φ(z + eps())*G₄[z]
 
         G₆ = G((π/6, π/2, 5π/6, -5π/6, -π/2, -π/6))
         Φ = rhsolve(G₆, n)
-        @test Φ(z - eps()) ≈ G₄[z]*Φ(z + eps())
+        @test Φ(z - eps()) ≈ Φ(z + eps())*G₄[z]
     end
 end
 

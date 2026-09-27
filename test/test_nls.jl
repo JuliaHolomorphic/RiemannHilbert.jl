@@ -12,18 +12,18 @@ using RiemannHilbert, ContinuumArrays, LinearAlgebra, SingularIntegrals, Test
     @test first(g) ≈ last(g) ≈ [1 0; 0 1]
     @test g[0.1] ≈ Gf(0.1)
     φ = rhsolve(g, 1000)
-    @test φ(0.1 * ⁺) ≈ φ(0.1 + eps()im) ≈ g[0.1]φ(0.1 * ⁻) ≈ g[0.1]φ(0.1 - eps()im)
-    @test φ((-0.1) * ⁺) ≈ g[-0.1]φ((-0.1) * ⁻)
+    @test φ(0.1 * ⁺) ≈ φ(0.1 + eps()im) ≈ φ(0.1 * ⁻)g[0.1] ≈ φ(0.1 - eps()im)g[0.1]
+    @test φ((-0.1) * ⁺) ≈ φ((-0.1) * ⁻)g[-0.1]
     
-    @test φ(1+im) ≈ [0.9847854664616504-0.014938097892888065im -0.07824233623082648-0.05395699475793745im;
-                 0.0778564768587141+0.05302708037085426im 1.0120649351483406+0.006873030868410332im] # mathematica
+    @test φ(1+im) ≈ [0.9847854664616504-0.014938097892888065im -0.0778564768587141-0.05302708037085426im;
+                 0.07824233623082648+0.05395699475793745im 1.0120649351483406+0.006873030868410332im] # mathematica
 
     x,t = 1.0,1.0
 
     g = expand(Gf(k) for k in -5.5..5.5)
     @test first(g) ≈ last(g) ≈ [1 0; 0 1]
     φ = rhsolve(g, 1000)
-    @test φ(0.1⁺) ≈ g[0.1]φ(0.1⁻)
+    @test φ(0.1⁺) ≈ φ(0.1⁻)g[0.1]
     # @test φ(1+im) ≈ [0.9952708020858667-0.00828828357987084im -0.036773740429971044-0.01579754685573759im;
     #             0.009328821936648003+0.04514458247615043im 1.0050689684367242+ 0.006553783105674419im]
 
@@ -48,7 +48,7 @@ using RiemannHilbert, ContinuumArrays, LinearAlgebra, SingularIntegrals, Test
     @test prod(first.(pieces(G))) ≈ [1 0; 0 1]
     @test norm(last.(pieces(G)) .- Ref(I)) ≤ 1E-14
 
-    Φ = transpose(rhsolve(transpose(G), 3000))
+    Φ = rhsolve(G, 3000)
     @test norm(Φ.coefficients[end-50:end]) ≤ 10E-14
 
     @test Φ(2im) ≈ φ(2im)

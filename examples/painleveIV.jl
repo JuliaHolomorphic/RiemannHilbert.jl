@@ -35,7 +35,7 @@ end
 # Solve the RHP and return the residue Y₁ in Φ(z) = I + Y₁/z + O(z⁻²)
 function residue(x; n = 4*120)
     G = painleveIV_jump(x)
-    U = transpose(rhsolve(transpose(G), n))   # Φ = I + 𝒞U
+    U = RiemannHilbert.rh_sie_solve(G, n)   # Φ = I + 𝒞U
     -sum(U) / (2π*im)
 end
 

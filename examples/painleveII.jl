@@ -23,4 +23,4 @@ n = 100
 Φ = rhsolve(G, n)
 
 z = 0.1exp(im*π/6)
-@test Φ(z * ⁺) ≈ G[z]Φ(z * ⁻)
+@test Φ(z * ⁺) ≈ Φ(z * ⁻)G[z]

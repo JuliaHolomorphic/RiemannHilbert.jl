@@ -56,9 +56,9 @@ Gx = (t,x) -> [0 2im*k*conj.(ρ)*exp(-2im*k*x-8im*k^3*t);
 
 import RiemannHilbert: fpstieltjesmatrix
 import ApproxFun: transform
-@time Φ = transpose(rhsolve(transpose(G), 2*4*200))
+@time Φ = rhsolve(G, 2*4*200)
 h = 0.0001
-@time Φ_h = transpose(rhsolve(transpose(G(0.0,h)), 2*4*200))
+@time Φ_h = rhsolve(G(0.0,h), 2*4*200)
 n = 2*4*200; S₋ = fpstieltjesmatrix(space(U)[1,1], n÷2, n÷2)
 (z = 0.1+eps()im; (Φ_h(z)-Φ(z))/h) - (z = 0.1-eps()im; ((Φ_h(z)-Φ(z))/h)*G(0.,0.)(0.1))
 

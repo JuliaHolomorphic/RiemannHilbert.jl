@@ -202,8 +202,8 @@ function checkside(side)
 end
 rhcollocationvalues(G, n, side) = checkside(side) == :left ? collocationvalues(G, n) : permutedims.(collocationvalues(G, n))
 
-rhmatrix(g, n; side=:left) = rhmatrix_eltype(eltype(g), g, n; side)
-function rhmatrix_eltype(::Any, g, n; side=:left)
+rhmatrix(g, n; side=:right) = rhmatrix_eltype(eltype(g), g, n; side)
+function rhmatrix_eltype(::Any, g, n; side=:right)
     checkside(side) # the sides agree for scalar g
     sp = basis(g)
     d = domain(sp)
@@ -218,7 +218,7 @@ end
 # Φ₊ = G*Φ₋ with Φ = I + 𝒞U: each column of U satisfies Uⱼ - (G-I)𝒞₋Uⱼ = (G-I)eⱼ, so
 # block (k,l) is the scalar rhmatrix with 𝐠 replaced by the (k,l) entry of G-I
 # (for side = :right this is the system for the transposed problem)
-function rhmatrix_eltype(::Type{<:AbstractMatrix}, G, n; side=:left)
+function rhmatrix_eltype(::Type{<:AbstractMatrix}, G, n; side=:right)
     sp = scalarbasis(basis(G))
     d = domain(sp)
     C₋ = fpcauchymatrix((n, n), d)
@@ -267,13 +267,13 @@ rhexpansion_domain(::UnionDomain, sp, c, n) = ⊎(ntuple(k -> sp.args[k][:,1:n] 
 
 # solve the singular integral equation for the density u, so that φ = 1 + 𝒞u (Φ = I + 𝒞U for matrix-valued G,
 # where U is a matrix of scalar expansions)
-rh_sie_solve(g, n; side=:left) = rh_sie_solve_eltype(eltype(g), g, n; side)
-function rh_sie_solve_eltype(::Any, g, n; side=:left)
+rh_sie_solve(g, n; side=:right) = rh_sie_solve_eltype(eltype(g), g, n; side)
+function rh_sie_solve_eltype(::Any, g, n; side=:right)
     g_v = collocationvalues(g,n) .- 1
     rhexpansion(basis(g), rhmatrix(g, n; side) \ g_v, n)
 end
 
-function rh_sie_solve_eltype(::Type{<:AbstractMatrix}, G, n; side=:left)
+function rh_sie_solve_eltype(::Type{<:AbstractMatrix}, G, n; side=:right)
     sp = scalarbasis(basis(G))
     𝐆 = rhcollocationvalues(G, n, side)
     N = checksquare(first(𝐆))
@@ -285,20 +285,20 @@ function rh_sie_solve_eltype(::Type{<:AbstractMatrix}, G, n; side=:left)
 end
 
 """
-    rhsolve(G, n; side=:left)
+    rhsolve(G, n; side=:right)
 
 solves the Riemann–Hilbert problem with jump `G` on its contour, using `n` collocation points
 on each piece of the contour, and returns the solution `Φ` as a function, normalized so that
-`Φ(z) → I` as `z → ∞`. For matrix-valued `G`, `side = :left` gives `Φ₊ = GΦ₋` and `side = :right`
-gives `Φ₊ = Φ₋G`. For scalar `G` these agree.
+`Φ(z) → I` as `z → ∞`. For matrix-valued `G`, `side = :right` (the default) gives `Φ₊ = Φ₋G`
+and `side = :left` gives `Φ₊ = GΦ₋`. For scalar `G` these agree.
 """
-rhsolve(g, n; side=:left) = rhsolve_eltype(eltype(g), g, n; side)
-function rhsolve_eltype(::Any, g, n; side=:left)
+rhsolve(g, n; side=:right) = rhsolve_eltype(eltype(g), g, n; side)
+function rhsolve_eltype(::Any, g, n; side=:right)
     u = rh_sie_solve(g, n; side)
     z -> 1 + cauchy(u,z)
 end
 
-function rhsolve_eltype(::Type{<:AbstractMatrix}, G, n; side=:left)
+function rhsolve_eltype(::Type{<:AbstractMatrix}, G, n; side=:right)
     U = rh_sie_solve(G, n; side)
     z -> I + map(u -> cauchy(u,z), U)
 end
