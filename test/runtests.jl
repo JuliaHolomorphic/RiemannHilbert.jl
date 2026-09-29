@@ -482,4 +482,6 @@ end
     end
 end
 
+include("test_plotting.jl")
+
 # include("test_nls.jl")
