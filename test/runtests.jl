@@ -420,6 +420,20 @@ end
     end
 end
 
+@testset "junction on a complex segment" begin
+    # splitting a segment gives a junction where one piece ends and the next starts; for complex segments
+    # rounding errors must not spoil the finite parts there
+    ω = exp(im*π/6)
+    n = 50
+    @test fpstieltjesmatrix((n,n), Segment(-ω, 0.0im) ∪ Segment(0.0im, ω)) ≈ fpstieltjesmatrix((n,n), Segment(-1.0, 0.0) ∪ Segment(0.0, 1.0))
+    a = t -> 0.5(1-t^2)*exp(t)
+    b = t -> 0.3(1-t^2)*cos(t)
+    Gf = t -> [1 a(t); b(t) 1+a(t)*b(t)]
+    Φ = rhsolve(expand(Gf(t/ω) for t in Segment(-ω, ω)), n)
+    Φ₂ = rhsolve(expand(Gf(t/ω) for t in Segment(-ω, 0.0im)) ⊎ expand(Gf(t/ω) for t in Segment(0.0im, ω)), n)
+    @test Φ₂(2.0+im) ≈ Φ(2.0+im) atol=1E-10
+end
+
 @testset "4 rays" begin
     s₁ = im
     s₃ = -im
