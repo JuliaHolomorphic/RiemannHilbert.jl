@@ -1,23 +1,29 @@
 using ContinuumArrays, RiemannHilbert, DomainSets, CairoMakie, ComplexPhasePortrait, Test
 
 
+# Ablowitz–Segur solution: s₂ = 0
 x = 0.2
-s₁,s₂,s₃ = 1+im,-2,1-im
+s₁,s₂,s₃ = im,0,-im
 
 # cyclic condition
 @test s₁ - s₂ + s₃ + s₁*s₂*s₃ == 0
 
 Θ(z) = 8/3*z^3+2*x*z
 G = [[1 0; s₁*exp(im*Θ(z)) 1] for z in Segment(0, 2.5exp(im*π/6))] ⊎
-    [[1 s₂*exp(-im*Θ(z)); 0 1] for z in Segment(0, 2.5exp(im*π/2))] ⊎
     [[1 0; s₃*exp(im*Θ(z)) 1] for z in Segment(0, 2.5exp(5im*π/6))] ⊎
     [[1 -s₁*exp(-im*Θ(z)); 0 1] for z in Segment(0, 2.5exp(-5im*π/6))] ⊎
-    [[1 0; -s₂*exp(im*Θ(z)) 1] for z in Segment(0, 2.5exp(-im*π/2))] ⊎
     [[1 -s₃*exp(-im*Θ(z)); 0 1] for z in Segment(0, 2.5exp(-im*π/6))]
 
+plot(domain(G))
 
-# product condition
+
+# product condition, ensures that the solution is bounded near 0
+h = 0.00000001
+@test G[h*exp(im*π/6)] * G[h*exp(5im*π/6)] * G[h*exp(-5im*π/6)]* G[h*exp(-im*π/6)] ≈ I
 @test prod(first.(components(G))) ≈ I
+
+# without it Φ will normally have algebraic singularities,
+#  you can use a parametrix to remove the singularity.
 
 n = 100
 Φ = rhsolve(G, n)
@@ -40,6 +46,70 @@ for k = 1:2, j = 1:2
 end
 fig
 
+V = RiemannHilbert.rh_sie_solve(G, 200)
+
+using SingularIntegrals
+z = 1+2im
+@test I + cauchy.(V, z) ≈ Φ(z)
+
+cauchy(V[1,2],0.0000001) # bounded near origin
+v_1 = components(V[1,2])[1] # ≈ 0 because no jump on (0,∞*exp(im*π/6))
+v_2 = components(V[1,2])[2] # ≈ 0 because no jump on (0,∞*exp(5im*π/6))
+v_3 = components(V[1,2])[3]
+v_4 = components(V[1,2])[4]
+p = plot(domain(v_1))
+plot!(domain(v_2))
+plot!(domain(v_3)); p
+plot!(domain(v_4)); p
+cauchy(v_1,0.0000001) 
+cauchy(v_2,0.0000001)
+cauchy(v_3,0.000000000001) # blows up! logarithmically
+cauchy(v_4,0.000000000001) # blows up! logarithmically
+
+cauchy(v_3,0.000000000001) + cauchy(v_4,0.000000000001) # blow up cancels
+
+
+# product condition on G => sum condition on V => no blow up
+# This is because the values actually cancel: we have a zero sum condition
+
+@test v_1[0] + v_2[0] + v_3[0] + v_4[0] ≈ 0 atol=1E-10
+
+using PowerNumbers, ClassicalOrthogonalPolynomials
+
+z_1 = exp(im*π/6) * ϵ # like a dual number
+z_2 = exp(5im*π/6) * ϵ # like a dual number
+z_3 = exp(-5im*π/6) * ϵ # like a dual number
+z_4 = exp(-im*π/6) * ϵ # like a dual number
+
+P̃ = legendre(Segment(0,2.5exp(im*π/6))) # mapped Legendre
+cauchy(P̃, z_2)[1] # behaviour of C[P_0 ∘ M^{-1}](z) near 0 from direction exp(im*5π/6)
+cauchy(P̃, z_3)[1] # behaviour of C[P_0 ∘ M^{-1}](z) near 0 from direction exp(-im*5π/6)
+cauchy(P̃, z_4)[1] # behaviour of C[P_0 ∘ M^{-1}](z) near 0 from direction exp(-im*5π/6)
+
+cauchy(P̃, z_1*exp(im*h))[1]  # has a branch cut 
+cauchy(P̃, z_1*exp(-im*h))[1] 
+
+
+
+# log part is same regardless of direction, finite contributions vary
+# automatic-differentiation-like implementation gives us values of each
+
+# when we set up the collocation system, we ignore the logarithmic part for
+# each collocation point associated with junction. The magic is that under
+# broad conditions, the solution will satisfy the sum condition, justifying
+# the collocation system.
+
+
+# as x becomes large, the jump G (and V) become oscillatory:
+
+x = -20
+Θ(z) = 8/3*z^3+2*x*z
+
+t = range(0,5,1000)
+lines(t, @.(real(exp(im*Θ(t * exp(im*π/6))))))
+
+# for integral representations of eg Airy we can deform along steepest descent
+# curves. Can we do the same thing here?
 
 ###
 # Negative x
@@ -87,6 +157,9 @@ function deformed_painleveII_jump(x; R=2.5)
     [U(-s₃, x, z)*L(s₁, x, z) for z in Segment(0.0, z₀)] ⊎
     [inv(U(-s₁, x, z))*inv(L(s₃, x, z)) for z in Segment(-z₀, 0.0)]
 end
+
+p = plot(domain(painleveII_jump(-5)))
+plot(domain(deformed_painleveII_jump(-10)))
 
 # Φ = I + 𝒞U where z𝒞U(z) → -∫U/(2πi) as z → ∞, so u(x) = 2 lim_{z → ∞} z Φ₁₂(z) = -∫U₁₂/(πi)
 painleveII(G, n) = -sum(RiemannHilbert.rh_sie_solve(G, n)[1,2])/(π*im)
