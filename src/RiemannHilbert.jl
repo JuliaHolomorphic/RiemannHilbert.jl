@@ -104,28 +104,51 @@ collocationpoints(d::UnionDomain, M::Int) = BlockVcat(collocationpoints.(compone
 # fprightstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedrightendpoint(d), finitepart)
 # fpleftstieltjesmoment!(V, sp, d) = stieltjesmoment!(V, sp, orientedleftendpoint(d), finitepart)
 
+# Finite parts at junctions are computed in the canonical coordinates of d, where the Legendre basis on d is
+# Legendre() as stieltjes is invariant under affine maps. The infinitesimal is added after mapping, with the
+# point snapped onto the canonical interval and its endpoints: otherwise rounding errors in the map of a complex
+# segment give the point a spurious O(1) imaginary part, which dominates the ϵ term and breaks the finite part.
+canonicallegendre(d) = Legendre{float(real(eltype(d)))}()
+
+function canonicalpoint(d, p)
+    x = mobius(d, p)
+    tol = 100eps(real(float(eltype(x))))
+    abs(x + 1) ≤ tol && return -one(real(x))
+    abs(x - 1) ≤ tol && return one(real(x))
+    abs(imag(x)) ≤ tol && return real(x)
+    x
+end
+
+# the point p ∈ d approached along the direction v, in the canonical coordinates of d
+canonicalapproach(d, p, v) = canonicalpoint(d, p) + 2v/complexlength(d)*ϵ
+canonicalleftapproach(d, r) = canonicalapproach(d, leftendpoint(r), intervalsign(r))
+canonicalrightapproach(d, r) = canonicalapproach(d, rightendpoint(r), -intervalsign(r))
+
 function fpstieltjesmatrix((m,n), d::IntervalOrSegment{T}) where T
     sp = legendre(d)
+    P = canonicallegendre(d)
     x = collocationpoints(d, m)
-    [permutedims(realpart.(stieltjes(sp, Directed{false}(orientedleftendpoint(d)))[1:n]));
+    h = 2/arclength(d) # the endpoints are approached along d
+    [permutedims(realpart.(stieltjes(P, Directed{false}(-1 + h*ϵ))[1:n]));
      stieltjes(sp, Directed{false}.(x[2:end-1]))[:,1:n];
-     permutedims(realpart.(stieltjes(sp, Directed{false}(orientedrightendpoint(d)))[1:n]))]
+     permutedims(realpart.(stieltjes(P, Directed{false}(1 - h*ϵ))[1:n]))]
 end
 
 function fpstieltjesmatrix((m,n), d::IntervalOrSegment, r::IntervalOrSegment)
     sp = legendre(d)
+    P = canonicallegendre(d)
     d == r && return fpstieltjesmatrix((m,n), d)
     x = collocationpoints(r, m)
     if leftendpoint(r) ∈ d && rightendpoint(r) ∈ d
-        [permutedims(realpart.(stieltjes(sp, orientedleftendpoint(r))[1:n]));
+        [permutedims(realpart.(stieltjes(P, canonicalleftapproach(d, r))[1:n]));
          stieltjes(sp, x[2:end-1])[:,1:n];
-         permutedims(realpart.(stieltjes(sp, orientedrightendpoint(r))[1:n]))]
+         permutedims(realpart.(stieltjes(P, canonicalrightapproach(d, r))[1:n]))]
     elseif leftendpoint(r) ∈ d
-        [permutedims(realpart.(stieltjes(sp, orientedleftendpoint(r))[1:n]));
+        [permutedims(realpart.(stieltjes(P, canonicalleftapproach(d, r))[1:n]));
          stieltjes(sp, x[2:end])[:,1:n]]
     elseif rightendpoint(r) ∈ d
         [stieltjes(sp, x[1:end-1])[:,1:n];
-         permutedims(realpart.(stieltjes(sp, orientedrightendpoint(r))[1:n]))]
+         permutedims(realpart.(stieltjes(P, canonicalrightapproach(d, r))[1:n]))]
     else
         stieltjes(sp, x)[:,1:n]
     end
